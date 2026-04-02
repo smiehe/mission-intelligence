@@ -10,7 +10,7 @@ except ImportError:
     st_autorefresh = None
 
 # 1. Basis-Konfiguration
-st.set_page_config(page_title="USS Intelligence HQ", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="PCS Intelligence HQ", page_icon="🚀", layout="wide")
 
 # --- DATA ENGINE (GSHEETS) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -32,12 +32,12 @@ def force_reload():
 # --- MISSIONS-DATEN ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 MISSION_DATA = {
-    "09:00": {"name": "Operation: Agent Profile", "duration": 30},
+    "09:00": {"name": "Operation Agent Profile", "duration": 30},
     "09:30": {"name": "The Intelligence Briefing (Nico)", "duration": 90},
     "11:15": {"name": "The Deep-Dive Mission", "duration": 90},
     "12:45": {"name": "Field Rations (Lunch)", "duration": 60},
     "13:45": {"name": "Final Briefing (Wrap-up)", "duration": 30},
-    "15:30": {"name": "Field Operation (Museum)", "duration": 120},
+    "15:30": {"name": "Field Operation", "duration": 120},
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
