@@ -3,7 +3,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
 
-# Autorefresh laden (wichtig für den Timer)
+# Autorefresh für den Live-Timer
 try:
     from streamlit_autorefresh import st_autorefresh
 except ImportError:
@@ -12,7 +12,7 @@ except ImportError:
 # 1. Basis-Konfiguration
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
 
-# 2. Verbindung zu Google Sheets
+# 2. Zentralspeicher (Google Sheets)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def safe_read(ws_name):
@@ -25,7 +25,7 @@ def safe_read(ws_name):
             return pd.DataFrame(columns=["Thema", "Details"])
         return pd.DataFrame()
 
-# 3. Konstanten
+# 3. Konstanten & Team
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 BOSS_LIST = {
     "The Awakened One": "🦅",
@@ -44,7 +44,7 @@ MISSION_DATA = {
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
-# 4. Session State Initialisierung
+# 4. System-Status (Session State)
 if 'access_granted' not in st.session_state:
     st.session_state.access_granted = False
 if 'active_mission_key' not in st.session_state:
@@ -54,104 +54,77 @@ if 'mission_start_time' not in st.session_state:
 if 'selected_boss' not in st.session_state:
     st.session_state.selected_boss = "The Awakened One"
 
-# 5. Styling (KEIN GRAU, GROSSE SCHRIFT)
+# 5. High-Contrast Design (KEIN GRAU)
 st.markdown("""
 <style>
-    /* Hintergrund & Schrift */
     .stApp { background-color: #000000; color: #FFFFFF; font-size: 1.2rem; }
     
-    /* Splash Box */
+    /* Splash Screen Design */
     .splash-box {
-        text-align: center; margin-top: 5%; padding: 40px;
+        text-align: center; margin-top: 5%; padding: 50px;
         border: 4px solid #00FF41; background-color: #050505;
+        box-shadow: 0 0 40px #00FF41;
     }
     
-    /* Sidebar Fix */
-    [data-testid="stSidebar"] { background-color: #050505; border-right: 2px solid #00FF41; }
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] b, [data-testid="stSidebar"] span {
-        color: #FFFFFF !important; font-size: 1.15rem !important; opacity: 1 !important;
+    /* Sidebar: Weiss auf Schwarz mit grünem Rand */
+    [data-testid="stSidebar"] { background-color: #050505; border-right: 3px solid #00FF41; }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] b, [data-testid="stSidebar"] span, [data-testid="stSidebar"] li {
+        color: #FFFFFF !important; font-size: 1.2rem !important; opacity: 1 !important;
     }
 
-    /* Timer */
+    /* Timer Anzeige */
     .timer-display {
         font-family: 'Courier New', Courier, monospace;
-        color: #00FF41; font-size: 3rem; text-align: center;
-        padding: 10px; border: 3px solid #00FF41; background: #000;
-        font-weight: bold;
+        color: #00FF41; font-size: 3.2rem; text-align: center;
+        padding: 15px; border: 3px solid #00FF41; background: #000;
+        font-weight: bold; text-shadow: 0 0 10px #00FF41;
     }
 
-    /* Header */
+    /* Header Banner */
     .mission-header {
-        width: 100%; background: #00FF41; color: #000000; padding: 12px 0;
-        text-align: center; font-weight: bold; letter-spacing: 4px;
-        margin-top: -65px; margin-bottom: 25px; font-size: 1.2rem;
+        width: 100%; background: #00FF41; color: #000000; padding: 15px 0;
+        text-align: center; font-weight: bold; letter-spacing: 5px;
+        margin-top: -70px; margin-bottom: 30px; font-size: 1.3rem;
     }
 
-    /* Buttons */
+    /* Knöpfe: Giftgrün auf Schwarz */
     .stButton>button { 
         background-color: #00FF41 !important; color: #000000 !important; 
-        font-weight: bold !important; font-size: 1.2rem !important; height: 3.5rem;
+        font-weight: bold !important; font-size: 1.2rem !important; height: 3.8rem;
+        border: none !important;
     }
-    .stButton>button:hover { background-color: #FFFFFF !important; }
+    .stButton>button:hover { background-color: #FFFFFF !important; color: #000000 !important; }
 
-    /* Karten */
-    .agent-card { border: 2px solid #00FF41; padding: 15px; background: #111; border-radius: 10px; margin-bottom: 10px; }
-    .agent-card b { color: #00FF41; font-size: 1.5rem; }
+    /* Karten für Agenten */
+    .agent-card { 
+        border: 2px solid #00FF41; padding: 20px; background: #111; 
+        border-radius: 12px; margin-bottom: 15px; 
+    }
+    .agent-card b { color: #00FF41; font-size: 1.6rem; }
     
-    /* Inputs & Labels */
-    label { color: #00FF41 !important; font-size: 1.3rem !important; font-weight: bold !important; }
+    /* Eingabefelder: Schwarz/Weiss/Grün */
+    label { color: #00FF41 !important; font-size: 1.4rem !important; font-weight: bold !important; }
     input, textarea, select { 
         background-color: #000000 !important; color: #FFFFFF !important; 
-        border: 2px solid #00FF41 !important; font-size: 1.1rem !important;
+        border: 2px solid #00FF41 !important; font-size: 1.2rem !important;
     }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] { color: #00FF41 !important; border: 1px solid #00FF41 !important; font-size: 1.2rem !important; }
+    .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #000000 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# 6. Timer-Tick
+# 6. Timer-Start
 if st.session_state.access_granted and st_autorefresh:
     st_autorefresh(interval=2000, key="global_tick")
 
-# 7. Startbildschirm (Splash)
+# 7. Login-Bereich (Splash)
 if not st.session_state.access_granted:
-    st.markdown('<div class="splash-box"><h1 style="color:#00FF41; font-size:4rem;">MISSION:<br>INTELLIGENCE</h1><p style="color:#FFF; font-size:1.5rem;">PCS DIVISION | Q1 2026</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="splash-box"><h1 style="color:#00FF41; font-size:4.5rem; letter-spacing:10px;">MISSION:<br>INTELLIGENCE</h1><p style="color:#FFF; font-size:1.6rem;">PCS DIVISION | QUARTERDAY Q1 2026</p></div>', unsafe_allow_html=True)
     
     _, col_mid, _ = st.columns([1,2,1])
     with col_mid:
         st.write("")
-        st.markdown("<p style='text-align:center; color:#00FF41; font-weight:bold; font-size:1.4rem;'>WÄHLE DEINEN BOSS-AVATAR:</p>", unsafe_allow_html=True)
-        boss_name = st.radio("Bosse:", list(BOSS_LIST.keys()), horizontal=True, label_visibility="collapsed")
-        st.session_state.selected_boss = boss_name
-        st.markdown(f"<div style='text-align:center; font-size:8rem;'>{BOSS_LIST[boss_name]}</div>", unsafe_allow_html=True)
-        
-        if st.button("ENTER HQ / IDENTITÄT BESTÄTIGEN"):
-            st.session_state.access_granted = True
-            st.session_state.mission_start_time = time.time()
-            st.rerun()
-
-# 8. HQ-Bereich (Main App)
-else:
-    # Top Banner
-    st.markdown('<div class="mission-header">NETWORK ACCESS GRANTED // BOSS MODE: ACTIVE // PCS HQ</div>', unsafe_allow_html=True)
-
-    # SIDEBAR
-    with st.sidebar:
-        st.markdown("### ⏳ MISSION CLOCK")
-        active_info = MISSION_DATA[st.session_state.active_mission_key]
-        rem_sec = max(0, (active_info['duration'] * 60) - (time.time() - st.session_state.mission_start_time))
-        m, s = divmod(int(rem_sec), 60)
-        t_color = "#00FF41" if rem_sec > 300 else "#FF4B4B"
-        st.markdown(f'<div class="timer-display" style="color:{t_color}; border-color:{t_color};">{m:02d}:{s:02d}</div>', unsafe_allow_html=True)
-        
-        st.markdown("---")
-        st.header("📍 EINSATZPLAN")
-        for k, d in MISSION_DATA.items():
-            lbl = f"{k} | {d['name']}"
-            if k == st.session_state.active_mission_key: lbl = f"▶ {lbl}"
-            if st.button(lbl, key=f"sb_{k}"):
-                st.session_state.active_mission_key = k
-                st.session_state.mission_start_time = time.time()
-                st.rerun()
-        
-        st.markdown("---")
-        st.write("**TEAM IM EINSATZ:**")
-        st.write("
+        st.markdown("<p style='text-align:center; color:#00FF41; font-weight:bold; font-size:1.5rem;'>WÄHLE DEINEN SLAY THE SPIRE AVATAR:</p>", unsafe_allow_html=True)
+        boss_name
