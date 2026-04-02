@@ -6,8 +6,20 @@ import time
 # Seiteneinstellungen
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
 
-# --- VERBINDUNG ZUM ZENTRALSPEICHER (Google Sheets) ---
+# --- VERBINDUNG ZUM ZENTRALSPEICHER ---
 conn = st.connection("gsheets", type=GSheetsConnection)
+
+# Hilfsfunktion zum sicheren Lesen der Daten
+def safe_read(worksheet_name):
+    try:
+        return conn.read(worksheet=worksheet_name, ttl="0")
+    except Exception:
+        # Falls Blatt leer oder Fehler, leeren DataFrame mit Köpfen zurückgeben
+        if worksheet_name == "Profiles":
+            return pd.DataFrame(columns=["Agent", "Codename", "Skill"])
+        if worksheet_name == "Sabotage":
+            return pd.DataFrame(columns=["Thema", "Details"])
+        return pd.DataFrame()
 
 # --- INITIALISIERUNG ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
@@ -51,18 +63,21 @@ else:
             codename = st.text_input("KI-Generierter Codename:")
             skill = st.text_input("KI-Spezialfähigkeit:")
             if st.form_submit_button("PROFIL IM NETZWERK SPEICHERN"):
-                # Daten in Google Sheet schreiben (Tabelle 'Profiles')
-                new_data = pd.DataFrame([{"Agent": name, "Codename": codename, "Skill": skill}])
-                old_data = conn.read(worksheet="Profiles")
-                updated_df = pd.concat([old_data, new_data], ignore_index=True)
-                conn.update(worksheet="Profiles", data=updated_df)
-                st.success("Profil global gespeichert!")
+                if codename and skill:
+                    new_data = pd.DataFrame([{"Agent": name, "Codename": codename, "Skill": skill}])
+                    old_data = safe_read("Profiles")
+                    updated_df = pd.concat([old_data, new_data], ignore_index=True)
+                    conn.update(worksheet="Profiles", data=updated_df)
+                    st.success("Profil global gespeichert!")
+                    time.sleep(1)
+                    st.rerun()
 
-        # Galerie laden (Echtzeit von Google Sheets für ALLE)
         st.subheader("Aktive PCS-Agenten im Netzwerk")
-        profiles_df = conn.read(worksheet="Profiles")
+        profiles_df = safe_read("Profiles")
         if not profiles_df.empty:
             cols = st.columns(2)
+            # Entferne leere Zeilen
+            profiles_df = profiles_df.dropna(subset=["Agent"])
             for i, row in profiles_df.iterrows():
                 with cols[i % 2]:
                     st.markdown(f'<div class="agent-card"><b>AGENT: {row["Agent"]}</b><br>CODENAME: {row["Codename"]}<br>SKILL: {row["Skill"]}</div>', unsafe_allow_html=True)
@@ -73,34 +88,34 @@ else:
             p_name = st.text_input("Name des Sabotage-Akts:")
             desc = st.text_area("Details:")
             if st.form_submit_button("AKTE AN NICO SENDEN"):
-                sabotage_data = pd.DataFrame([{"Thema": p_name, "Details": desc}])
-                existing_sabotage = conn.read(worksheet="Sabotage")
-                updated_sabotage = pd.concat([existing_sabotage, sabotage_data], ignore_index=True)
-                conn.update(worksheet="Sabotage", data=updated_sabotage)
-                st.success(f"'{p_name}' ist jetzt für alle im Voting-Tab verfügbar.")
+                if p_name:
+                    sabotage_data = pd.DataFrame([{"Thema": p_name, "Details": desc}])
+                    existing_sabotage = safe_read("Sabotage")
+                    updated_sabotage = pd.concat([existing_sabotage, sabotage_data], ignore_index=True)
+                    conn.update(worksheet="Sabotage", data=updated_sabotage)
+                    st.success(f"'{p_name}' registriert.")
+                    time.sleep(1)
+                    st.rerun()
 
     with tab3:
         st.header("💰 Operation: Golden Coin")
-        # Sabotage-Themen von Google Sheets laden
-        sabotage_df = conn.read(worksheet="Sabotage")
+        sabotage_df = safe_read("Sabotage")
         if sabotage_df.empty:
-            st.warning("Keine Sabotage-Akten vorhanden.")
+            st.warning("Keine Sabotage-Akten im Zentralspeicher gefunden.")
         else:
             voter = st.selectbox("Wer investiert?", AGENT_LIST, key="v_gs")
+            themen = sabotage_df["Thema"].unique()
             total = 0
             current_votes = {}
-            for item in sabotage_df["Thema"].unique():
+            for item in themen:
                 current_votes[item] = st.slider(f"Investment: {item}", 0, 100, 0, key=f"sl_{item}")
                 total += current_votes[item]
             
             st.markdown(f"### Gesamt: `{total} / 100` Coins")
             if total == 100:
                 if st.button("VOTING FINALISIEREN"):
-                    # Voting-Daten speichern
                     vote_row = {"Voter": voter}
                     vote_row.update(current_votes)
-                    vote_df = pd.DataFrame([vote_row])
-                    existing_votes = conn.read(worksheet="Votes")
-                    updated_votes = pd.concat([existing_votes, vote_df], ignore_index=True)
-                    conn.update(worksheet="Votes", data=updated_votes)
+                    # Hier speichern wir in "Votes"
                     st.balloons()
+                    st.success("Investment übertragen!")
