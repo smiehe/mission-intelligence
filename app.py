@@ -21,6 +21,9 @@ MISSION_DATA = {
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
+# Liste der PCS Agenten (Claudine am Ende)
+AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
+
 # --- INITIALISIERUNG SESSION STATE ---
 if 'access_granted' not in st.session_state:
     st.session_state.access_granted = False
@@ -60,11 +63,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- AUTO-REFRESH (Nur wenn eingeloggt) ---
+# --- AUTO-REFRESH ---
 if st.session_state.access_granted and st_autorefresh:
     st_autorefresh(interval=1000, key="timer_refresh")
 
-# --- LOGIK: STARTBILDSCHIRM ---
+# --- STARTBILDSCHIRM ---
 if not st.session_state.access_granted:
     st.markdown("""
         <div class="splash-container">
@@ -82,14 +85,13 @@ else:
     # --- HQ SIDEBAR ---
     st.sidebar.markdown("### ⏳ MISSION CLOCK")
     
-    # Timer Logik
     mission_info = MISSION_DATA[st.session_state.active_mission_key]
     duration_sec = mission_info['duration'] * 60
     elapsed = time.time() - st.session_state.mission_start_time
     remaining = max(0, duration_sec - elapsed)
     
     mins, secs = divmod(int(remaining), 60)
-    timer_col = "#00FF41" if remaining > 300 else "#FF0000" # Rot unter 5 Min
+    timer_col = "#00FF41" if remaining > 300 else "#FF0000"
     
     st.sidebar.markdown(f'<div class="timer-box" style="color:{timer_col}; border-color:{timer_col};">{mins:02d}:{secs:02d}</div>', unsafe_allow_html=True)
     st.sidebar.markdown(f"<p style='text-align:center;'>AKTIV: {mission_info['name']}</p>", unsafe_allow_html=True)
@@ -101,21 +103,48 @@ else:
         label = f"{time_key} | {data['name']}"
         if time_key == st.session_state.active_mission_key:
             label = f"▶ {label}"
-            
         if st.sidebar.button(label, key=f"btn_{time_key}"):
             st.session_state.active_mission_key = time_key
             st.session_state.mission_start_time = time.time()
             st.rerun()
 
     st.sidebar.markdown("---")
-    st.sidebar.info("PCS-Team: Sören, Laura, Tamara, Janina, Christin, Leo, Claudine")
+    st.sidebar.info(f"PCS-Team: {', '.join(AGENT_LIST)}")
 
     # --- HAUPTBEREICH ---
     st.title(f"🕵️‍♂️ HQ: {mission_info['name']}")
-    
     tab1, tab2, tab3 = st.tabs(["👤 PCS-PROFILE", "📂 SABOTAGE-AKTE", "💰 COIN-INVESTMENT"])
 
     with tab1:
         st.header("Operation: Agent Profile")
-        with st.form("checkin"):
-            name = st.selectbox("PCS Agent:", ["Sören", "Laura
+        with st.form("checkin_form"):
+            name = st.selectbox("PCS Agent:", AGENT_LIST)
+            codename = st.text_input("KI-Generierter Codename:")
+            skill = st.text_input("KI-Spezialfähigkeit:")
+            if st.form_submit_button("PROFIL AKTIVIEREN"):
+                st.success(f"Agent {name} registriert.")
+
+    with tab2:
+        st.header("Die Sabotage-Akte")
+        with st.form("sabotage_form"):
+            p_name = st.text_input("Welcher Prozess sabotiert uns?")
+            desc = st.text_area("Details der Ineffizienz:")
+            if st.form_submit_button("AKTE AN NICO SENDEN"):
+                st.warning("Datenübertragung gestartet...")
+
+    with tab3:
+        st.header("💰 Operation: Golden Coin")
+        st.info("Verteilen Sie Ihre 100 Coins.")
+        voter = st.selectbox("PCS Agent für Voting:", AGENT_LIST, key="v_t3")
+        
+        projects = ["KI-Onboarding (Rexx)", "Salesforce Analyst", "Auto-Protokoll", "Kunden-Mail-Bot"]
+        total = 0
+        for p in projects:
+            val = st.slider(f"Investment: {p}", 0, 100, 0, key=f"sl_{p}")
+            total += val
+        
+        st.markdown(f"### Gesamt: `{total} / 100`")
+        if total == 100:
+            if st.button("INVESTITION FINALISIEREN"):
+                st.balloons()
+                st.success("Investment-Plan verriegelt.")
