@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 
-# Versuche das Autorefresh-Modul zu laden, falls vorhanden
+# Versuch, das Autorefresh-Modul zu laden
 try:
     from streamlit_autorefresh import st_autorefresh
 except ImportError:
@@ -52,8 +52,11 @@ st.markdown("""
     }
     .stButton>button:hover { border: 1px solid #FFFFFF !important; color: #FFFFFF !important; }
     .stTabs [data-baseweb="tab"] { color: #00FF41; border: 1px solid #00FF41; }
-    /* Fix für Eingabefelder Sichtbarkeit */
-    input, textarea, select { background-color: #111 !important; color: #00FF41 !important; border: 1px solid #00FF41 !important; }
+    input, textarea, select { 
+        background-color: #111 !important; 
+        color: #00FF41 !important; 
+        border: 1px solid #00FF41 !important; 
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -61,7 +64,7 @@ st.markdown("""
 if st.session_state.access_granted and st_autorefresh:
     st_autorefresh(interval=1000, key="timer_refresh")
 
-# --- STARTBILDSCHIRM ---
+# --- LOGIK: STARTBILDSCHIRM ---
 if not st.session_state.access_granted:
     st.markdown("""
         <div class="splash-container">
@@ -86,7 +89,7 @@ else:
     remaining = max(0, duration_sec - elapsed)
     
     mins, secs = divmod(int(remaining), 60)
-    timer_col = "#00FF41" if remaining > 300 else "#FF0000"
+    timer_col = "#00FF41" if remaining > 300 else "#FF0000" # Rot unter 5 Min
     
     st.sidebar.markdown(f'<div class="timer-box" style="color:{timer_col}; border-color:{timer_col};">{mins:02d}:{secs:02d}</div>', unsafe_allow_html=True)
     st.sidebar.markdown(f"<p style='text-align:center;'>AKTIV: {mission_info['name']}</p>", unsafe_allow_html=True)
@@ -115,12 +118,4 @@ else:
     with tab1:
         st.header("Operation: Agent Profile")
         with st.form("checkin"):
-            name = st.selectbox("PCS Agent:", ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"])
-            codename = st.text_input("KI-Generierter Codename:")
-            skill = st.text_input("KI-Spezialfähigkeit:")
-            if st.form_submit_button("PROFIL AKTIVIEREN"):
-                st.success(f"Agent {name} registriert.")
-
-    with tab2:
-        st.header("Die Sabotage-Akte")
-        with st.form("sabotage"):
+            name = st.selectbox("PCS Agent:", ["Sören", "Laura
