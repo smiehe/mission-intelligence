@@ -3,7 +3,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
 
-# Autorefresh für den Timer
+# Autorefresh für den flüssigen Takt (Timer)
 try:
     from streamlit_autorefresh import st_autorefresh
 except ImportError:
@@ -12,10 +12,10 @@ except ImportError:
 # 1. Basis-Konfiguration
 st.set_page_config(page_title="PCS Intelligence HQ", page_icon="🚀", layout="wide")
 
-# --- DATA ENGINE ---
+# --- DATA ENGINE (GSHEETS) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=5) # Kurzer Cache für flüssige Bedienung
 def get_cached_data(ws_name):
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
@@ -23,9 +23,11 @@ def get_cached_data(ws_name):
     except:
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill"])
         if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
+        if ws_name == "Votes": return pd.DataFrame(columns=["Voter", "Total"])
         return pd.DataFrame()
 
 def force_reload():
+    """Löscht den Cache und erzwingt Daten-Synchronisation."""
     st.cache_data.clear()
     st.rerun()
 
@@ -41,16 +43,18 @@ MISSION_DATA = {
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
+# --- SYSTEM STATUS ---
 if 'access_granted' not in st.session_state: st.session_state.access_granted = False
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- STYLING (HARTES LCARS, KEINE VERLÄUFE) ---
+# --- STYLING (LCARS / TACTICAL DESIGN - KEINE VERLÄUFE) ---
 st.markdown("""
 <style>
+    /* Grund-Design */
     .stApp { background-color: #000000; color: #FFFFFF; font-family: 'Courier New', monospace; }
     
-    /* Splash Box ohne Verlauf */
+    /* Splash Box */
     .splash-box {
         text-align: center; margin-top: 5%; padding: 60px;
         border: 4px solid #00FF41; 
@@ -76,7 +80,7 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Header ohne Verlauf */
+    /* Header */
     .mission-header {
         width: 100%; background-color: #00FF41; 
         color: #000; padding: 15px; font-weight: bold; 
@@ -84,32 +88,48 @@ st.markdown("""
         margin-bottom: 40px; border-radius: 0 0 30px 0;
     }
 
-    /* Buttons Style */
+    /* Buttons */
     .stButton>button {
         background-color: #111 !important; color: #FFFFFF !important;
         border: 3px solid #00FF41 !important; 
         height: 4rem; font-weight: bold !important; font-size: 1.2rem !important;
     }
     .stButton>button:hover {
-        background-color: #00FF41 !important; color: #FFFFFF !important;
+        background-color: #00FF41 !important; color: #000 !important;
     }
 
-    /* Karten Design */
+    /* Info Karten */
     .info-card {
-        border-left: 10px solid #00FF41; 
-        padding: 15px; background: #111; 
         border: 1px solid #00FF41;
         border-left: 10px solid #00FF41;
+        padding: 15px; background: #111; 
         border-radius: 0 15px 15px 0; margin-bottom: 10px;
     }
 
-    /* Größere Texte, kein Grau */
+    /* Texte & Labels */
     label, p, span, div { color: #FFFFFF !important; font-size: 1.3rem !important; }
     label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.4rem !important; }
     
-    input, textarea, select { 
+    /* Eingabefelder */
+    input, textarea { 
         background-color: #000 !important; color: #FFF !important; 
         border: 2px solid #00FF41 !important; font-size: 1.3rem !important;
+    }
+
+    /* FIX: SCHWARZER TEXT AUF GRÜNEM GRUND (Identify Agent Selectbox) */
+    div[data-baseweb="select"] > div {
+        background-color: #00FF41 !important;
+        border: 2px solid #00FF41 !important;
+    }
+    div[data-baseweb="select"] span {
+        color: #000000 !important;
+        font-weight: bold !important;
+    }
+    div[data-baseweb="select"] svg {
+        fill: #000000 !important;
+    }
+    li[data-baseweb="option"] {
+        color: #000000 !important;
     }
 
     /* Tab Design */
@@ -133,14 +153,15 @@ if not st.session_state.access_granted:
             st.session_state.mission_start_time = time.time()
             st.rerun()
 else:
+    # AUTO-REFRESH (Timer-Tick jede Sekunde)
     if st_autorefresh:
         st_autorefresh(interval=1000, key="timer_tick")
 
     st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // SECURE ACCESS</div>', unsafe_allow_html=True)
 
-    # SIDEBAR
+    # --- SIDEBAR ---
     with st.sidebar:
-        st.markdown("### CHRONOMETER")
+        st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         elapsed = time.time() - st.session_state.mission_start_time
         rem_sec = max(0, (active_info['duration'] * 60) - elapsed)
@@ -161,17 +182,16 @@ else:
         st.markdown("---")
         if st.button("SYNC SYSTEM"): force_reload()
 
-    # MAIN TERMINAL
+    # --- MAIN TERMINAL TABS ---
     t1, t2, t3 = st.tabs(["👤 PERSONNEL", "📂 SABOTAGE", "💰 CREDITS"])
 
+    # TAB 1: PERSONNEL
     with t1:
-        # Layout: Button oben rechts
         top_col1, top_col2 = st.columns([0.7, 0.3])
         with top_col1:
             st.header("Personnel Database")
         with top_col2:
-            st.write(" ") # Spacer
-            # Wir nutzen hier kein st.form, damit die Daten sofort fließen können
+            st.write(" ")
             save_p = st.button("COMMIT TO DATABASE", use_container_width=True)
 
         input_col1, input_col2 = st.columns(2)
@@ -201,8 +221,8 @@ else:
                     conn.update(worksheet="Profiles", data=p_list[p_list["Agent"] != r["Agent"]])
                     force_reload()
 
+    # TAB 2: SABOTAGE
     with t2:
-        # Layout: Button oben rechts
         top_col1_s, top_col2_s = st.columns([0.7, 0.3])
         with top_col1_s:
             st.header("Security Breach Log")
@@ -234,20 +254,45 @@ else:
                     conn.update(worksheet="Sabotage", data=s_list[s_list["Thema"] != r["Thema"]])
                     force_reload()
 
+    # TAB 3: CREDITS (INVESTMENT)
     with t3:
         st.header("Credit Investment Console")
         df_coins = get_cached_data("Sabotage")
+        
         if df_coins.empty:
             st.info("Awaiting reports...")
         else:
             voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
             spent = 0
+            investments = {}
+            
             for item in df_coins["Thema"].unique():
-                spent += st.slider(f"ALLOCATE: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
+                val = st.slider(f"ALLOCATE: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
+                investments[item] = val
+                spent += val
             
             c_status = "#00FF41" if spent == 100 else "#FF4B4B"
             st.markdown(f"### Total Allocation: <span style='color:{c_status};'>{spent} / 100</span>", unsafe_allow_html=True)
             
             if spent == 100:
                 if st.button("FINALIZE TRANSACTION"):
-                    st.balloons()
+                    with st.spinner("Transmitting data..."):
+                        # Daten für Google Sheets vorbereiten
+                        vote_row = {"Voter": voter, "Total": 100}
+                        vote_row.update(investments)
+                        new_vote_df = pd.DataFrame([vote_row])
+                        
+                        # Bestehende Votes laden und aktualisieren
+                        df_votes = get_cached_data("Votes")
+                        if not df_votes.empty:
+                            df_votes = df_votes[df_votes["Voter"] != voter]
+                        
+                        updated_votes = pd.concat([df_votes, new_vote_df], ignore_index=True)
+                        conn.update(worksheet="Votes", data=updated_votes)
+                        
+                        st.balloons()
+                        st.success("TRANSACTION SECURED")
+            elif spent > 100:
+                st.error(f"Budget Exceeded! Remove {spent - 100} credits.")
+            else:
+                st.warning(f"Allocate {100 - spent} more credits to finalize.")
