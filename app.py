@@ -20,7 +20,7 @@ def safe_read(worksheet_name):
             return pd.DataFrame(columns=["Thema", "Details"])
         return pd.DataFrame()
 
-# --- INITIALISIERUNG ---
+# --- KONFIGURATION ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 BOSS_LIST = {
     "The Awakened One": "🦅",
@@ -30,135 +30,70 @@ BOSS_LIST = {
     "The Champ": "🏆"
 }
 
+MISSION_DATA = {
+    "09:00": {"name": "Operation: Agent Profile", "duration": 30},
+    "09:30": {"name": "The Intelligence Briefing (Nico)", "duration": 90},
+    "11:15": {"name": "The Deep-Dive Mission", "duration": 90},
+    "12:45": {"name": "Field Rations (Lunch)", "duration": 60},
+    "13:45": {"name": "Final Briefing (Wrap-up)", "duration": 30},
+    "15:30": {"name": "Field Operation (Museum)", "duration": 120},
+    "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
+}
+
+# --- SESSION STATE ---
 if 'access_granted' not in st.session_state:
     st.session_state.access_granted = False
-if 'selected_boss' not in st.session_state:
-    st.session_state.selected_boss = "The Awakened One"
 if 'active_mission_key' not in st.session_state:
     st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state:
     st.session_state.mission_start_time = time.time()
+if 'selected_boss' not in st.session_state:
+    st.session_state.selected_boss = "The Awakened One"
 
-# --- DESIGN & CSS ---
+# --- DESIGN & CSS (Kein Grau, Große Schrift) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #000000; color: #FFFFFF; font-size: 1.1rem; }
+    /* Grund-Design */
+    .stApp { background-color: #000000; color: #FFFFFF; font-size: 1.2rem; }
     
-    .digital-header {
-        width: 100%; background: #00FF41; color: #000000; padding: 12px 0;
-        text-align: center; font-family: 'Courier New', Courier, monospace;
-        font-weight: bold; letter-spacing: 4px; font-size: 1.1rem;
-        margin-top: -65px; margin-bottom: 30px;
+    /* Splash Screen (Altes Design) */
+    .splash-container {
+        text-align: center; margin-top: 5%; padding: 50px;
+        border: 4px solid #00FF41; box-shadow: 0 0 50px #00FF41;
+        background-color: #050505; font-family: 'Courier New', Courier, monospace;
+    }
+    
+    /* Sidebar Fix */
+    [data-testid="stSidebar"] { background-color: #050505; border-right: 2px solid #00FF41; }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] b, [data-testid="stSidebar"] span {
+        color: #FFFFFF !important; font-size: 1.1rem !important; opacity: 1 !important;
     }
 
+    /* Timer Box */
     .timer-box {
         font-family: 'Courier New', Courier, monospace;
-        color: #00FF41; font-size: 3rem; text-align: center;
-        padding: 15px; border: 3px solid #00FF41; background: #000;
-        margin-bottom: 10px; font-weight: bold;
+        color: #00FF41; font-size: 2.8rem; text-align: center;
+        padding: 10px; border: 3px solid #00FF41; background: #000; margin-bottom: 10px;
     }
 
-    .agent-card {
-        border: 2px solid #00FF41; padding: 15px; border-radius: 8px; 
-        margin-bottom: 8px; background: #111111;
+    /* Header Balken */
+    .digital-header {
+        width: 100%; background: #00FF41; color: #000000; padding: 10px 0;
+        text-align: center; font-weight: bold; letter-spacing: 3px;
+        margin-top: -65px; margin-bottom: 20px; font-size: 1.1rem;
     }
-    .agent-card b { color: #00FF41; font-size: 1.3rem; }
-    .avatar-display { font-size: 2.5rem; float: right; margin-top: -10px; }
 
+    /* Buttons (Grün/Schwarz) */
     .stButton>button { 
         background-color: #00FF41 !important; color: #000000 !important; 
-        border: none !important; width: 100%; font-weight: bold !important;
-        height: 3.5rem; font-size: 1.2rem !important;
+        font-weight: bold !important; font-size: 1.2rem !important; border: none !important;
+        height: 3.5rem;
     }
-    
-    label { color: #00FF41 !important; font-size: 1.2rem !important; font-weight: bold !important; }
-    input, textarea, select { 
-        background-color: #000000 !important; color: #FFFFFF !important; 
-        border: 2px solid #00FF41 !important; 
-    }
-    
-    /* Radio Buttons für Character Select */
-    div[data-testid="stMarkdownContainer"] > p { color: white !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    .stButton>button:hover { background-color: #FFFFFF !important; }
 
-if st.session_state.access_granted:
-    st_autorefresh(interval=2000, key="timer_refresh")
-
-# --- STARTBILDSCHIRM (CHARACTER SELECT) ---
-if not st.session_state.access_granted:
-    st.markdown("""
-        <div style="text-align: center; margin-top: 5%; padding: 30px; border: 4px solid #00FF41; background: #000;">
-            <h1 style="color: #00FF41; font-size: 3.5rem; letter-spacing: 5px;">CHARACTER SELECT</h1>
-            <p style="color: #FFF; font-size: 1.2rem;">WÄHLE DEINEN ENDBOSS FÜR DIE MISSION</p>
-        </div>
-    """, unsafe_allow_html=True)
+    /* Karten & Inputs */
+    .agent-card { border: 2px solid #00FF41; padding: 15px; background: #111; border-radius: 10px; margin-bottom: 10px; }
+    .agent-card b { color: #00FF41; font-size: 1.4rem; }
+    .avatar-icon { font-size: 3rem; float: right; }
     
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.write("")
-        selected = st.radio("Verfügbare Bosse:", list(BOSS_LIST.keys()), horizontal=True)
-        st.session_state.selected_boss = selected
-        
-        st.markdown(f"<div style='text-align:center; font-size:6rem;'>{BOSS_LIST[selected]}</div>", unsafe_allow_html=True)
-        st.write("")
-        
-        if st.button("BESTÄTIGEN & HQ BETRETEN"):
-            st.session_state.access_granted = True
-            st.session_state.mission_start_time = time.time()
-            st.rerun()
-else:
-    # --- HEADER & SIDEBAR (Wie gehabt) ---
-    st.markdown('<div class="digital-header">INTELLIGENCE NETWORK // BOSS MODE ACTIVE</div>', unsafe_allow_html=True)
-    
-    # Mission Clock & Agenda
-    st.sidebar.markdown(f"### ⏳ MISSION CLOCK")
-    # ... (Timer Code hier weggelassen für Kürze, bleibt aber im echten Code gleich) ...
-    
-    # --- TABS ---
-    tab1, tab2, tab3 = st.tabs(["👤 PCS-PROFILE", "📂 SABOTAGE-AKTE", "💰 COIN-INVESTMENT"])
-
-    with tab1:
-        st.header("Operation: Agent Profile")
-        with st.form("p_form"):
-            name = st.selectbox("PCS Agent:", AGENT_LIST)
-            codename = st.text_input("KI-Codename:")
-            skill = st.text_input("KI-Skill:")
-            # Der Avatar wird aus dem session_state (vom Startbildschirm) gezogen
-            current_avatar = st.session_state.selected_boss
-            st.info(f"Ausgewählter Avatar: {current_avatar} {BOSS_LIST[current_avatar]}")
-            
-            if st.form_submit_button("PROFIL SPEICHERN"):
-                if codename and skill:
-                    new_p = pd.DataFrame([{
-                        "Agent": name, 
-                        "Codename": codename, 
-                        "Skill": skill, 
-                        "Avatar": BOSS_LIST[current_avatar]
-                    }])
-                    old_p = safe_read("Profiles")
-                    conn.update(worksheet="Profiles", data=pd.concat([old_p, new_p], ignore_index=True))
-                    st.success("Profil mit Boss-Stärke gespeichert!")
-                    time.sleep(1)
-                    st.rerun()
-
-        st.subheader("Aktive PCS-Agenten im Netzwerk")
-        p_df = safe_read("Profiles").dropna(subset=["Agent"])
-        if not p_df.empty:
-            cols = st.columns(2)
-            for i, row in p_df.iterrows():
-                with cols[i % 2]:
-                    # Hole das Icon (entweder aus Spalte "Avatar" oder Standard)
-                    icon = row["Avatar"] if "Avatar" in row else "🕵️‍♂️"
-                    st.markdown(f"""
-                        <div class="agent-card">
-                            <div class="avatar-display">{icon}</div>
-                            <b>{row["Agent"]}</b><br>
-                            CODE: {row["Codename"]}<br>
-                            SKILL: {row["Skill"]}
-                        </div>
-                    """, unsafe_allow_html=True)
-                    if st.button(f"🗑️ LÖSCHEN: {row['Agent']}", key=f"del_{i}"):
-                        conn.update(worksheet="Profiles", data=safe_read("Profiles").drop(i))
-                        st.rerun()
-    # ... (Restliche Tabs wie gehabt) ...
+    label { color: #00FF
