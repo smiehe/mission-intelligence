@@ -44,7 +44,7 @@ MISSION_DATA = {
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
-# 4. System-Status (Session State)
+# 4. System-Status (Session State Initialisierung)
 if 'access_granted' not in st.session_state:
     st.session_state.access_granted = False
 if 'active_mission_key' not in st.session_state:
@@ -54,25 +54,22 @@ if 'mission_start_time' not in st.session_state:
 if 'selected_boss' not in st.session_state:
     st.session_state.selected_boss = "The Awakened One"
 
-# 5. High-Contrast Design (KEIN GRAU)
+# 5. High-Contrast Design (Alles Weiss/Grün auf Schwarz)
 st.markdown("""
 <style>
     .stApp { background-color: #000000; color: #FFFFFF; font-size: 1.2rem; }
     
-    /* Splash Screen Design */
     .splash-box {
         text-align: center; margin-top: 5%; padding: 50px;
         border: 4px solid #00FF41; background-color: #050505;
         box-shadow: 0 0 40px #00FF41;
     }
     
-    /* Sidebar: Weiss auf Schwarz mit grünem Rand */
     [data-testid="stSidebar"] { background-color: #050505; border-right: 3px solid #00FF41; }
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] b, [data-testid="stSidebar"] span, [data-testid="stSidebar"] li {
         color: #FFFFFF !important; font-size: 1.2rem !important; opacity: 1 !important;
     }
 
-    /* Timer Anzeige */
     .timer-display {
         font-family: 'Courier New', Courier, monospace;
         color: #00FF41; font-size: 3.2rem; text-align: center;
@@ -80,14 +77,12 @@ st.markdown("""
         font-weight: bold; text-shadow: 0 0 10px #00FF41;
     }
 
-    /* Header Banner */
     .mission-header {
         width: 100%; background: #00FF41; color: #000000; padding: 15px 0;
         text-align: center; font-weight: bold; letter-spacing: 5px;
         margin-top: -70px; margin-bottom: 30px; font-size: 1.3rem;
     }
 
-    /* Knöpfe: Giftgrün auf Schwarz */
     .stButton>button { 
         background-color: #00FF41 !important; color: #000000 !important; 
         font-weight: bold !important; font-size: 1.2rem !important; height: 3.8rem;
@@ -95,36 +90,17 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #FFFFFF !important; color: #000000 !important; }
 
-    /* Karten für Agenten */
     .agent-card { 
         border: 2px solid #00FF41; padding: 20px; background: #111; 
         border-radius: 12px; margin-bottom: 15px; 
     }
     .agent-card b { color: #00FF41; font-size: 1.6rem; }
     
-    /* Eingabefelder: Schwarz/Weiss/Grün */
     label { color: #00FF41 !important; font-size: 1.4rem !important; font-weight: bold !important; }
     input, textarea, select { 
         background-color: #000000 !important; color: #FFFFFF !important; 
         border: 2px solid #00FF41 !important; font-size: 1.2rem !important;
     }
 
-    /* Tabs */
     .stTabs [data-baseweb="tab"] { color: #00FF41 !important; border: 1px solid #00FF41 !important; font-size: 1.2rem !important; }
-    .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #000000 !important; }
-</style>
-""", unsafe_allow_html=True)
-
-# 6. Timer-Start
-if st.session_state.access_granted and st_autorefresh:
-    st_autorefresh(interval=2000, key="global_tick")
-
-# 7. Login-Bereich (Splash)
-if not st.session_state.access_granted:
-    st.markdown('<div class="splash-box"><h1 style="color:#00FF41; font-size:4.5rem; letter-spacing:10px;">MISSION:<br>INTELLIGENCE</h1><p style="color:#FFF; font-size:1.6rem;">PCS DIVISION | QUARTERDAY Q1 2026</p></div>', unsafe_allow_html=True)
-    
-    _, col_mid, _ = st.columns([1,2,1])
-    with col_mid:
-        st.write("")
-        st.markdown("<p style='text-align:center; color:#00FF41; font-weight:bold; font-size:1.5rem;'>WÄHLE DEINEN SLAY THE SPIRE AVATAR:</p>", unsafe_allow_html=True)
-        boss_name
+    .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #00
