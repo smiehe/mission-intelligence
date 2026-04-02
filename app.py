@@ -54,7 +54,7 @@ st.markdown("""
     .splash-box {
         text-align: center; margin-top: 5%; padding: 60px;
         border: 2px solid #00FF41; 
-        background: linear-gradient(180deg, rgba(0,255,65,0.1) 0%, rgba(0,0,0,1) 100%);
+        background-color: #00FF41;
         box-shadow: 0 0 50px rgba(0,255,65,0.3);
         border-radius: 0 50px 0 50px;
     }
@@ -78,7 +78,7 @@ st.markdown("""
     }
 
     .mission-header {
-        width: 100%; background: linear-gradient(90deg, #00FF41 0%, #000 70%);
+        width: 100%; background-color: #00FF41;
         color: #000; padding: 15px; font-weight: bold; 
         font-size: 1.5rem; letter-spacing: 5px; margin-top: -75px; 
         margin-bottom: 40px; border-radius: 0 0 30px 0;
@@ -136,7 +136,7 @@ else:
     if st_autorefresh:
         st_autorefresh(interval=1000, key="timer_tick")
 
-    st.markdown('<div class="mission-header">>> USS INTELLIGENCE // MAIN COMPUTER // STATUS: ACTIVE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // STATUS: ACTIVE</div>', unsafe_allow_html=True)
 
     # --- SIDEBAR ---
     with st.sidebar:
