@@ -1,16 +1,3 @@
-Alles klar, Mission "Avatar" wird abgebrochen! Wir kehren zurück zu einem puristischen, hochfunktionalen Intelligence-Design. Keine Icons, kein Schnickschnack – nur die harten Fakten für das PCS-Team.
-
-Ich habe den Code jetzt komplett bereinigt:
-
-Avatar-Logik entfernt: Der Startbildschirm ist wieder clean, und in den Profilen tauchen keine Symbole mehr auf.
-
-Speicher-Stabilität behalten: Die "Brute Force"-Speicherung (Cache-Killer) bleibt drin, damit es weiterhin beim ersten Klick funktioniert.
-
-Design-Check: Alles ist weiterhin in High-Contrast (Weiß/Grün auf Schwarz) und ohne graue Texte.
-
-Die bereinigte „Purist Edition“ der PCS-Zentrale
-Kopiere diesen Block und ersetze damit deine app.py.
-
 Python
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
