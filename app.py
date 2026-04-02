@@ -10,15 +10,18 @@ except ImportError:
 # Seiteneinstellungen
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
 
-# --- INITIALISIERUNG DER DATEN-STRUKTUR ---
+# --- INITIALISIERUNG ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
-# 1. Globaler Speicher für Sabotage-Themen
+# Speicher für Agenten-Profile
+if 'agent_profiles' not in st.session_state:
+    st.session_state.agent_profiles = {}
+
+# Speicher für die Sabotage-Akten
 if 'sabotage_list' not in st.session_state:
     st.session_state.sabotage_list = []
 
-# 2. Gedächtnis für die Coins (Pro Agent ein Dictionary)
-# Struktur: {'Sören': {'Thema1': 20, 'Thema2': 80}, 'Tamara': {...}}
+# Gedächtnis für die Coins (Pro Agent ein Dictionary)
 if 'all_votes' not in st.session_state:
     st.session_state.all_votes = {agent: {} for agent in AGENT_LIST}
 
@@ -45,6 +48,14 @@ st.markdown("""
         color: #00FF41; font-size: 3rem; text-align: center;
         padding: 15px; border: 2px solid #00FF41;
         background: rgba(0, 255, 65, 0.1); margin-bottom: 5px;
+    }
+    /* Agenten-Karte Styling */
+    .agent-card {
+        border: 1px solid #00FF41;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        background: rgba(0, 255, 65, 0.05);
     }
     .stButton>button {
         background-color: #000000 !important; color: #00FF41 !important;
@@ -115,11 +126,36 @@ else:
             codename = st.text_input("KI-Generierter Codename:")
             skill = st.text_input("KI-Spezialfähigkeit:")
             if st.form_submit_button("PROFIL AKTIVIEREN"):
-                st.success(f"Agent {name} registriert.")
+                if codename and skill:
+                    # Speichere das Profil im Session State
+                    st.session_state.agent_profiles[name] = {
+                        "codename": codename,
+                        "skill": skill
+                    }
+                    st.success(f"Agent {name} registriert.")
+                else:
+                    st.error("Bitte Codename und Spezialfähigkeit eingeben!")
+
+        # --- GALERIE DER AKTIVEN AGENTEN ---
+        st.markdown("---")
+        st.subheader("🕵️‍♂️ Aktive PCS-Agenten im Feld")
+        if not st.session_state.agent_profiles:
+            st.info("Warte auf Identifizierung der Agenten...")
+        else:
+            # Zeige die Profile in einem Grid an
+            cols = st.columns(2)
+            for i, (agent, data) in enumerate(st.session_state.agent_profiles.items()):
+                with cols[i % 2]:
+                    st.markdown(f"""
+                        <div class="agent-card">
+                            <b style="color:#00FF41;">AGENT: {agent}</b><br>
+                            <span style="opacity:0.7;">CODENAME:</span> {data['codename']}<br>
+                            <span style="opacity:0.7;">SKILL:</span> {data['skill']}
+                        </div>
+                    """, unsafe_allow_html=True)
 
     with tab2:
         st.header("Die Sabotage-Akte")
-        st.write("Welche Prozesse sabotieren unsere Coordination?")
         with st.form("sabotage_form", clear_on_submit=True):
             p_name = st.text_input("Name des Sabotage-Akts:")
             desc = st.text_area("Details der Ineffizienz:")
@@ -127,7 +163,6 @@ else:
             if submitted and p_name:
                 if p_name not in st.session_state.sabotage_list:
                     st.session_state.sabotage_list.append(p_name)
-                    # Initialisiere dieses Thema für alle Agenten mit 0 Coins
                     for agent in AGENT_LIST:
                         st.session_state.all_votes[agent][p_name] = 0
                 st.success(f"'{p_name}' wurde für das Voting freigeschaltet.")
@@ -135,32 +170,21 @@ else:
     with tab3:
         st.header("💰 Operation: Golden Coin")
         if not st.session_state.sabotage_list:
-            st.warning("⚠️ Keine Sabotage-Akten vorhanden. Bitte erst in Tab 2 Probleme identifizieren!")
+            st.warning("⚠️ Keine Sabotage-Akten vorhanden.")
         else:
             voter = st.selectbox("Wer investiert gerade?", AGENT_LIST, key="voter_select")
-            st.info(f"Agent {voter}, verteilen Sie Ihre 100 Coins auf die Missions-Ziele.")
+            st.info(f"Agent {voter}, verteilen Sie Ihre 100 Coins.")
             
             total_spent = 0
-            # Wir gehen die Themen durch und holen uns den gespeicherten Wert für DIESEN Agenten
             for s_item in st.session_state.sabotage_list:
-                # Hole den bisherigen Wert aus dem Gedächtnis
                 current_val = st.session_state.all_votes[voter].get(s_item, 0)
-                
-                # Slider zeigt den gespeicherten Wert an
                 new_val = st.slider(f"Investment: {s_item}", 0, 100, current_val, key=f"slider_{voter}_{s_item}")
-                
-                # Update das Gedächtnis sofort bei Bewegung des Sliders
                 st.session_state.all_votes[voter][s_item] = new_val
                 total_spent += new_val
             
-            st.markdown(f"### Budget-Status für {voter}: `{total_spent} / 100` Coins")
-            
-            if total_spent > 100:
-                st.error(f"⚠️ Budget überschritten! Bitte {total_spent - 100} Coins abziehen.")
-            elif total_spent < 100:
-                st.warning(f"Es müssen noch {100 - total_spent} Coins vergeben werden.")
-            else:
-                st.success(f"✅ Budget für {voter} ist perfekt verteilt.")
+            st.markdown(f"### Status {voter}: `{total_spent} / 100` Coins")
+            if total_spent == 100:
                 if st.button(f"INVESTITION FÜR {voter} FINALISIEREN"):
                     st.balloons()
-                    st.success(f"Daten für Agent {voter} wurden sicher im HQ-Zentralspeicher hinterlegt.")
+            elif total_spent > 100:
+                st.error(f"Budget überschritten! (-{total_spent - 100})")
