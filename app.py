@@ -10,12 +10,17 @@ except ImportError:
 # Seiteneinstellungen
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
 
-# --- INITIALISIERUNG ---
+# --- INITIALISIERUNG DER DATEN-STRUKTUR ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
-# Speicher für die Sabotage-Akten (wird für das Voting genutzt)
+# 1. Globaler Speicher für Sabotage-Themen
 if 'sabotage_list' not in st.session_state:
     st.session_state.sabotage_list = []
+
+# 2. Gedächtnis für die Coins (Pro Agent ein Dictionary)
+# Struktur: {'Sören': {'Thema1': 20, 'Thema2': 80}, 'Tamara': {...}}
+if 'all_votes' not in st.session_state:
+    st.session_state.all_votes = {agent: {} for agent in AGENT_LIST}
 
 if 'access_granted' not in st.session_state:
     st.session_state.access_granted = False
@@ -116,38 +121,30 @@ else:
         st.header("Die Sabotage-Akte")
         st.write("Welche Prozesse sabotieren unsere Coordination?")
         with st.form("sabotage_form", clear_on_submit=True):
-            p_name = st.text_input("Name des Sabotage-Akts (z.B. Salesforce-Sync):")
+            p_name = st.text_input("Name des Sabotage-Akts:")
             desc = st.text_area("Details der Ineffizienz:")
             submitted = st.form_submit_button("AKTE AN NICO SENDEN")
             if submitted and p_name:
                 if p_name not in st.session_state.sabotage_list:
                     st.session_state.sabotage_list.append(p_name)
-                st.success(f"'{p_name}' wurde in die Datenbank aufgenommen.")
+                    # Initialisiere dieses Thema für alle Agenten mit 0 Coins
+                    for agent in AGENT_LIST:
+                        st.session_state.all_votes[agent][p_name] = 0
+                st.success(f"'{p_name}' wurde für das Voting freigeschaltet.")
 
     with tab3:
         st.header("💰 Operation: Golden Coin")
         if not st.session_state.sabotage_list:
             st.warning("⚠️ Keine Sabotage-Akten vorhanden. Bitte erst in Tab 2 Probleme identifizieren!")
         else:
-            st.info("Verteilen Sie exakt 100 Coins auf die identifizierten Sabotage-Akten.")
-            voter = st.selectbox("PCS Agent für Voting:", AGENT_LIST, key="v_t3")
+            voter = st.selectbox("Wer investiert gerade?", AGENT_LIST, key="voter_select")
+            st.info(f"Agent {voter}, verteilen Sie Ihre 100 Coins auf die Missions-Ziele.")
             
-            total_coins = 0
-            votes = {}
-            
-            # Dynamische Slider basierend auf den Einträgen aus Tab 2
+            total_spent = 0
+            # Wir gehen die Themen durch und holen uns den gespeicherten Wert für DIESEN Agenten
             for s_item in st.session_state.sabotage_list:
-                votes[s_item] = st.slider(f"Investment für: {s_item}", 0, 100, 0, key=f"v_{s_item}")
-                total_coins += votes[s_item]
-            
-            st.markdown(f"### Gesamt-Investment: `{total_coins} / 100` Coins")
-            
-            if total_coins > 100:
-                st.error(f"⚠️ Budget überschritten! Bitte {total_coins - 100} Coins abziehen.")
-            elif total_coins < 100:
-                st.warning(f"Es müssen noch {100 - total_coins} Coins vergeben werden.")
-            else:
-                st.success("✅ Perfekte Budgetierung. Mission bereit zum Abschluss.")
-                if st.button("INVESTITION FINALISIEREN"):
-                    st.balloons()
-                    st.success("Investment-Daten wurden sicher ans HQ übertragen.")
+                # Hole den bisherigen Wert aus dem Gedächtnis
+                current_val = st.session_state.all_votes[voter].get(s_item, 0)
+                
+                # Slider zeigt den gespeicherten Wert an
+                new_val = st.slider(f"Investment:
