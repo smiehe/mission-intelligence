@@ -1,20 +1,3 @@
-Verstanden, Commander. Wir schalten das HQ in den LCARS-Modus (Library Computer Access and Retrieval System). Wir behalten die robuste Engine (den "Warp-Antrieb") unter der Haube, polieren aber die Benutzeroberfläche auf Star-Trek-Niveau auf.
-
-Die Upgrades:
-Sci-Fi Ästhetik: Ein ausgeklügeltes Terminal-Design mit "Glow"-Effekten und klaren Sektionen.
-
-Kein Grau mehr: Alles, was vorher schwer lesbar war, ist jetzt Reinweiß oder Neon-Cyan/Grün und deutlich größer.
-
-Startseite: Ein cineastischer "Authorization Required"-Screen.
-
-Agenda: Die Sidebar sieht jetzt aus wie ein taktisches Kontrollpanel.
-
-Performance: Die "Smooth Timer" Logik bleibt unangetastet.
-
-Die „Starship Edition“ (Vollständiger Code)
-Ersetze deine app.py durch diesen "Enterprise-ready" Code:
-
-Python
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
