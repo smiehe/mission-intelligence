@@ -2,7 +2,12 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
-from streamlit_autorefresh import st_autorefresh
+
+# Versuch, Autorefresh zu laden
+try:
+    from streamlit_autorefresh import st_autorefresh
+except ImportError:
+    st_autorefresh = None
 
 # Seiteneinstellungen
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
@@ -50,50 +55,52 @@ if 'mission_start_time' not in st.session_state:
 if 'selected_boss' not in st.session_state:
     st.session_state.selected_boss = "The Awakened One"
 
-# --- DESIGN & CSS (Kein Grau, Große Schrift) ---
+# --- DESIGN & CSS (KEIN GRAU, MAX KONTRAST) ---
 st.markdown("""
-    <style>
-    /* Grund-Design */
+<style>
     .stApp { background-color: #000000; color: #FFFFFF; font-size: 1.2rem; }
     
-    /* Splash Screen (Altes Design) */
-    .splash-container {
+    /* Splash Screen */
+    .splash-box {
         text-align: center; margin-top: 5%; padding: 50px;
-        border: 4px solid #00FF41; box-shadow: 0 0 50px #00FF41;
-        background-color: #050505; font-family: 'Courier New', Courier, monospace;
+        border: 4px solid #00FF41; background-color: #050505;
     }
     
-    /* Sidebar Fix */
+    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #050505; border-right: 2px solid #00FF41; }
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] b, [data-testid="stSidebar"] span {
         color: #FFFFFF !important; font-size: 1.1rem !important; opacity: 1 !important;
     }
 
-    /* Timer Box */
-    .timer-box {
+    /* Timer */
+    .timer-display {
         font-family: 'Courier New', Courier, monospace;
         color: #00FF41; font-size: 2.8rem; text-align: center;
-        padding: 10px; border: 3px solid #00FF41; background: #000; margin-bottom: 10px;
+        padding: 10px; border: 3px solid #00FF41; background: #000;
     }
 
-    /* Header Balken */
-    .digital-header {
+    /* Header */
+    .mission-header {
         width: 100%; background: #00FF41; color: #000000; padding: 10px 0;
         text-align: center; font-weight: bold; letter-spacing: 3px;
         margin-top: -65px; margin-bottom: 20px; font-size: 1.1rem;
     }
 
-    /* Buttons (Grün/Schwarz) */
+    /* Buttons */
     .stButton>button { 
         background-color: #00FF41 !important; color: #000000 !important; 
-        font-weight: bold !important; font-size: 1.2rem !important; border: none !important;
-        height: 3.5rem;
+        font-weight: bold !important; font-size: 1.2rem !important; height: 3.5rem;
     }
     .stButton>button:hover { background-color: #FFFFFF !important; }
 
-    /* Karten & Inputs */
+    /* Karten */
     .agent-card { border: 2px solid #00FF41; padding: 15px; background: #111; border-radius: 10px; margin-bottom: 10px; }
     .agent-card b { color: #00FF41; font-size: 1.4rem; }
-    .avatar-icon { font-size: 3rem; float: right; }
     
-    label { color: #00FF
+    /* Inputs */
+    label { color: #00FF41 !important; font-size: 1.3rem !important; font-weight: bold !important; }
+    input, textarea, select { background-color: #000000 !important; color: #FFFFFF !important; border: 2px solid #00FF41 !important; }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] { color: #00FF41 !important; border: 1px solid #00FF41 !important; font-size: 1.2rem !important; }
+    .stTabs [aria-selected="true"] { background-color: #00FF41 !
