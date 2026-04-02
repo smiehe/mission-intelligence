@@ -1,38 +1,19 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
 import time
-
-# Autorefresh laden
-try:
-    from streamlit_autorefresh import st_autorefresh
-except ImportError:
-    st_autorefresh = None
 
 # Seiteneinstellungen
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
 
+# --- VERBINDUNG ZUM ZENTRALSPEICHER (Google Sheets) ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 # --- INITIALISIERUNG ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
-# Speicher für Agenten-Profile
-if 'agent_profiles' not in st.session_state:
-    st.session_state.agent_profiles = {}
-
-# Speicher für die Sabotage-Akten
-if 'sabotage_list' not in st.session_state:
-    st.session_state.sabotage_list = []
-
-# Gedächtnis für die Coins (Pro Agent ein Dictionary)
-if 'all_votes' not in st.session_state:
-    st.session_state.all_votes = {agent: {} for agent in AGENT_LIST}
-
 if 'access_granted' not in st.session_state:
     st.session_state.access_granted = False
-
-if 'active_mission_key' not in st.session_state:
-    st.session_state.active_mission_key = "09:00"
-
-if 'mission_start_time' not in st.session_state:
-    st.session_state.mission_start_time = time.time()
 
 # --- DESIGN & CSS ---
 st.markdown("""
@@ -43,148 +24,83 @@ st.markdown("""
         border: 3px solid #00FF41; box-shadow: 0 0 50px #00FF41;
         background-color: #050505; font-family: 'Courier New', Courier, monospace;
     }
-    .timer-box {
-        font-family: 'Courier New', Courier, monospace;
-        color: #00FF41; font-size: 3rem; text-align: center;
-        padding: 15px; border: 2px solid #00FF41;
-        background: rgba(0, 255, 65, 0.1); margin-bottom: 5px;
-    }
-    /* Agenten-Karte Styling */
     .agent-card {
-        border: 1px solid #00FF41;
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 10px;
-        background: rgba(0, 255, 65, 0.05);
+        border: 1px solid #00FF41; padding: 15px; border-radius: 5px; margin-bottom: 10px; background: rgba(0, 255, 65, 0.05);
     }
-    .stButton>button {
-        background-color: #000000 !important; color: #00FF41 !important;
-        border: 1px solid #00FF41 !important; width: 100%; text-align: left !important;
-    }
-    .stButton>button:hover { border: 1px solid #FFFFFF !important; color: #FFFFFF !important; }
-    input, textarea, select { 
-        background-color: #111 !important; color: #00FF41 !important; border: 1px solid #00FF41 !important; 
-    }
+    .stButton>button { background-color: #000000 !important; color: #00FF41 !important; border: 1px solid #00FF41 !important; width: 100%; }
+    input, textarea, select { background-color: #111 !important; color: #00FF41 !important; border: 1px solid #00FF41 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-if st.session_state.access_granted and st_autorefresh:
-    st_autorefresh(interval=1000, key="timer_refresh")
-
-# --- LOGIK: STARTBILDSCHIRM ---
+# --- STARTBILDSCHIRM ---
 if not st.session_state.access_granted:
-    st.markdown("""
-        <div class="splash-container">
-            <h1 style="font-size: 4rem; letter-spacing: 10px;">MISSION:<br>INTELLIGENCE</h1>
-            <p>> PCS DIVISION | QUARTERDAY Q1 2026<br>> STATUS: ENCRYPTED</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="splash-container"><h1>MISSION:<br>INTELLIGENCE</h1><p>> PCS DIVISION | Q1 2026</p></div>', unsafe_allow_html=True)
     _, col2, _ = st.columns([1,1,1])
     with col2:
-        if st.button("ENTER HQ / MISSION STARTEN"):
+        if st.button("ENTER HQ / IDENTITÄT BESTÄTIGEN"):
             st.session_state.access_granted = True
-            st.session_state.mission_start_time = time.time()
             st.rerun()
 else:
-    # --- SIDEBAR ---
-    st.sidebar.markdown("### ⏳ MISSION CLOCK")
-    mission_info = {
-        "09:00": {"name": "Operation: Agent Profile", "duration": 30},
-        "09:30": {"name": "The Intelligence Briefing (Nico)", "duration": 90},
-        "11:15": {"name": "The Deep-Dive Mission", "duration": 90},
-        "12:45": {"name": "Field Rations (Lunch)", "duration": 60},
-        "13:45": {"name": "Final Briefing (Wrap-up)", "duration": 30},
-        "15:30": {"name": "Field Operation (Museum)", "duration": 120},
-        "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
-    }
-    
-    current_mission = mission_info[st.session_state.active_mission_key]
-    elapsed = time.time() - st.session_state.mission_start_time
-    remaining = max(0, (current_mission['duration'] * 60) - elapsed)
-    
-    mins, secs = divmod(int(remaining), 60)
-    timer_col = "#00FF41" if remaining > 300 else "#FF0000"
-    st.sidebar.markdown(f'<div class="timer-box" style="color:{timer_col}; border-color:{timer_col};">{mins:02d}:{secs:02d}</div>', unsafe_allow_html=True)
-    
-    st.sidebar.header("📍 EINSATZPLAN")
-    for time_key, data in mission_info.items():
-        label = f"{time_key} | {data['name']}"
-        if time_key == st.session_state.active_mission_key: label = f"▶ {label}"
-        if st.sidebar.button(label, key=f"btn_{time_key}"):
-            st.session_state.active_mission_key = time_key
-            st.session_state.mission_start_time = time.time()
-            st.rerun()
-
-    # --- HAUPTBEREICH ---
-    st.title(f"🕵️‍♂️ HQ: {current_mission['name']}")
+    # --- HQ BEREICH ---
     tab1, tab2, tab3 = st.tabs(["👤 PCS-PROFILE", "📂 SABOTAGE-AKTE", "💰 COIN-INVESTMENT"])
 
     with tab1:
         st.header("Operation: Agent Profile")
-        with st.form("checkin_form"):
+        with st.form("profile_form"):
             name = st.selectbox("PCS Agent:", AGENT_LIST)
             codename = st.text_input("KI-Generierter Codename:")
             skill = st.text_input("KI-Spezialfähigkeit:")
-            if st.form_submit_button("PROFIL AKTIVIEREN"):
-                if codename and skill:
-                    # Speichere das Profil im Session State
-                    st.session_state.agent_profiles[name] = {
-                        "codename": codename,
-                        "skill": skill
-                    }
-                    st.success(f"Agent {name} registriert.")
-                else:
-                    st.error("Bitte Codename und Spezialfähigkeit eingeben!")
+            if st.form_submit_button("PROFIL IM NETZWERK SPEICHERN"):
+                # Daten in Google Sheet schreiben (Tabelle 'Profiles')
+                new_data = pd.DataFrame([{"Agent": name, "Codename": codename, "Skill": skill}])
+                old_data = conn.read(worksheet="Profiles")
+                updated_df = pd.concat([old_data, new_data], ignore_index=True)
+                conn.update(worksheet="Profiles", data=updated_df)
+                st.success("Profil global gespeichert!")
 
-        # --- GALERIE DER AKTIVEN AGENTEN ---
-        st.markdown("---")
-        st.subheader("🕵️‍♂️ Aktive PCS-Agenten im Feld")
-        if not st.session_state.agent_profiles:
-            st.info("Warte auf Identifizierung der Agenten...")
-        else:
-            # Zeige die Profile in einem Grid an
+        # Galerie laden (Echtzeit von Google Sheets für ALLE)
+        st.subheader("Aktive PCS-Agenten im Netzwerk")
+        profiles_df = conn.read(worksheet="Profiles")
+        if not profiles_df.empty:
             cols = st.columns(2)
-            for i, (agent, data) in enumerate(st.session_state.agent_profiles.items()):
+            for i, row in profiles_df.iterrows():
                 with cols[i % 2]:
-                    st.markdown(f"""
-                        <div class="agent-card">
-                            <b style="color:#00FF41;">AGENT: {agent}</b><br>
-                            <span style="opacity:0.7;">CODENAME:</span> {data['codename']}<br>
-                            <span style="opacity:0.7;">SKILL:</span> {data['skill']}
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f'<div class="agent-card"><b>AGENT: {row["Agent"]}</b><br>CODENAME: {row["Codename"]}<br>SKILL: {row["Skill"]}</div>', unsafe_allow_html=True)
 
     with tab2:
         st.header("Die Sabotage-Akte")
-        with st.form("sabotage_form", clear_on_submit=True):
+        with st.form("sabotage_form"):
             p_name = st.text_input("Name des Sabotage-Akts:")
-            desc = st.text_area("Details der Ineffizienz:")
-            submitted = st.form_submit_button("AKTE AN NICO SENDEN")
-            if submitted and p_name:
-                if p_name not in st.session_state.sabotage_list:
-                    st.session_state.sabotage_list.append(p_name)
-                    for agent in AGENT_LIST:
-                        st.session_state.all_votes[agent][p_name] = 0
-                st.success(f"'{p_name}' wurde für das Voting freigeschaltet.")
+            desc = st.text_area("Details:")
+            if st.form_submit_button("AKTE AN NICO SENDEN"):
+                sabotage_data = pd.DataFrame([{"Thema": p_name, "Details": desc}])
+                existing_sabotage = conn.read(worksheet="Sabotage")
+                updated_sabotage = pd.concat([existing_sabotage, sabotage_data], ignore_index=True)
+                conn.update(worksheet="Sabotage", data=updated_sabotage)
+                st.success(f"'{p_name}' ist jetzt für alle im Voting-Tab verfügbar.")
 
     with tab3:
         st.header("💰 Operation: Golden Coin")
-        if not st.session_state.sabotage_list:
-            st.warning("⚠️ Keine Sabotage-Akten vorhanden.")
+        # Sabotage-Themen von Google Sheets laden
+        sabotage_df = conn.read(worksheet="Sabotage")
+        if sabotage_df.empty:
+            st.warning("Keine Sabotage-Akten vorhanden.")
         else:
-            voter = st.selectbox("Wer investiert gerade?", AGENT_LIST, key="voter_select")
-            st.info(f"Agent {voter}, verteilen Sie Ihre 100 Coins.")
+            voter = st.selectbox("Wer investiert?", AGENT_LIST, key="v_gs")
+            total = 0
+            current_votes = {}
+            for item in sabotage_df["Thema"].unique():
+                current_votes[item] = st.slider(f"Investment: {item}", 0, 100, 0, key=f"sl_{item}")
+                total += current_votes[item]
             
-            total_spent = 0
-            for s_item in st.session_state.sabotage_list:
-                current_val = st.session_state.all_votes[voter].get(s_item, 0)
-                new_val = st.slider(f"Investment: {s_item}", 0, 100, current_val, key=f"slider_{voter}_{s_item}")
-                st.session_state.all_votes[voter][s_item] = new_val
-                total_spent += new_val
-            
-            st.markdown(f"### Status {voter}: `{total_spent} / 100` Coins")
-            if total_spent == 100:
-                if st.button(f"INVESTITION FÜR {voter} FINALISIEREN"):
+            st.markdown(f"### Gesamt: `{total} / 100` Coins")
+            if total == 100:
+                if st.button("VOTING FINALISIEREN"):
+                    # Voting-Daten speichern
+                    vote_row = {"Voter": voter}
+                    vote_row.update(current_votes)
+                    vote_df = pd.DataFrame([vote_row])
+                    existing_votes = conn.read(worksheet="Votes")
+                    updated_votes = pd.concat([existing_votes, vote_df], ignore_index=True)
+                    conn.update(worksheet="Votes", data=updated_votes)
                     st.balloons()
-            elif total_spent > 100:
-                st.error(f"Budget überschritten! (-{total_spent - 100})")
