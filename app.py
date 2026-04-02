@@ -147,4 +147,20 @@ else:
                 current_val = st.session_state.all_votes[voter].get(s_item, 0)
                 
                 # Slider zeigt den gespeicherten Wert an
-                new_val = st.slider(f"Investment:
+                new_val = st.slider(f"Investment: {s_item}", 0, 100, current_val, key=f"slider_{voter}_{s_item}")
+                
+                # Update das Gedächtnis sofort bei Bewegung des Sliders
+                st.session_state.all_votes[voter][s_item] = new_val
+                total_spent += new_val
+            
+            st.markdown(f"### Budget-Status für {voter}: `{total_spent} / 100` Coins")
+            
+            if total_spent > 100:
+                st.error(f"⚠️ Budget überschritten! Bitte {total_spent - 100} Coins abziehen.")
+            elif total_spent < 100:
+                st.warning(f"Es müssen noch {100 - total_spent} Coins vergeben werden.")
+            else:
+                st.success(f"✅ Budget für {voter} ist perfekt verteilt.")
+                if st.button(f"INVESTITION FÜR {voter} FINALISIEREN"):
+                    st.balloons()
+                    st.success(f"Daten für Agent {voter} wurden sicher im HQ-Zentralspeicher hinterlegt.")
