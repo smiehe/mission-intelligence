@@ -16,18 +16,17 @@ st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍�
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def get_fresh_data(ws_name):
-    """Erzwingt das Laden absolut frischer Daten ohne Zwischenspeicher."""
+    """Lädt absolut frische Daten und stellt sicher, dass alle Spalten da sind."""
     st.cache_data.clear() 
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
-        # Falls das Sheet existiert aber leer ist, Spalten sicherstellen
-        if df.empty:
+        if df is None or df.empty:
             if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill"])
-            if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema"])
+            if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
         return df.dropna(how="all")
     except Exception:
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill"])
-        if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema"])
+        if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
         return pd.DataFrame()
 
 # --- KONFIGURATION ---
@@ -57,7 +56,7 @@ st.markdown("""
     .timer-display { font-family: 'Courier New', monospace; color: #00FF41; font-size: 3.5rem; text-align: center; padding: 15px; border: 3px solid #00FF41; font-weight: bold; }
     .mission-header { width: 100%; background: #00FF41; color: #000; padding: 15px 0; text-align: center; font-weight: bold; margin-top: -70px; margin-bottom: 30px; font-size: 1.3rem; }
     .stButton>button { background-color: #00FF41 !important; color: #000 !important; font-weight: bold !important; height: 4rem; }
-    .agent-card { border: 2px solid #00FF41; padding: 20px; background: #111; border-radius: 12px; margin-bottom: 15px; }
+    .agent-card, .sabotage-card { border: 2px solid #00FF41; padding: 20px; background: #111; border-radius: 12px; margin-bottom: 15px; }
     label { color: #00FF41 !important; font-size: 1.4rem !important; font-weight: bold !important; }
     input, textarea, select { background-color: #000 !important; color: #FFF !important; border: 2px solid #00FF41 !important; font-size: 1.2rem !important; }
     .stTabs [data-baseweb="tab"] { color: #00FF41 !important; border: 1px solid #00FF41 !important; }
@@ -67,7 +66,7 @@ st.markdown("""
 
 # --- STARTBILDSCHIRM ---
 if not st.session_state.access_granted:
-    st.markdown('<div class="splash-box"><h1 style="color:#00FF41; font-size:5rem;">MISSION:<br>INTELLIGENCE</h1><p style="color:#FFF; font-size:1.8rem;">PCS DIVISION | QUARTERDAY Q1 2026</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="splash-box"><h1 style="color:#00FF41; font-size:5rem;">MISSION:<br>INTELLIGENCE</h1><p style="color:#FFF; font-size:1.8rem;">PCS DIVISION | Q1 2026</p></div>', unsafe_allow_html=True)
     _, col_mid, _ = st.columns([1,1,1])
     with col_mid:
         if st.button("ENTER HQ / MISSION STARTEN"):
@@ -75,18 +74,15 @@ if not st.session_state.access_granted:
             st.session_state.mission_start_time = time.time()
             st.rerun()
 else:
-    # Auto-Refresh (Timer läuft im Hintergrund)
     if st_autorefresh:
         st_autorefresh(interval=2000, key="timer_tick")
 
-    # --- HQ BEREICH ---
-    st.markdown('<div class="mission-header">NETWORK ACCESS GRANTED // PCS HQ BERLIN // STATUS: ACTIVE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="mission-header">NETWORK ACCESS GRANTED // PCS HQ // STATUS: ACTIVE</div>', unsafe_allow_html=True)
 
     with st.sidebar:
         st.markdown("### ⏳ MISSION CLOCK")
         active_info = MISSION_DATA[st.session_state.active_mission_key]
-        elapsed = time.time() - st.session_state.mission_start_time
-        rem_sec = max(0, (active_info['duration'] * 60) - elapsed)
+        rem_sec = max(0, (active_info['duration'] * 60) - (time.time() - st.session_state.mission_start_time))
         m, s = divmod(int(rem_sec), 60)
         st.markdown(f'<div class="timer-display">{m:02d}:{s:02d}</div>', unsafe_allow_html=True)
         st.markdown("---")
@@ -105,18 +101,17 @@ else:
     with t1:
         st.header("Operation: Agent Profile")
         with st.form("p_form", clear_on_submit=True):
-            a_name = st.selectbox("Wer bist du?", AGENT_LIST)
-            c_name = st.text_input("Dein KI-Codename:")
-            a_skill = st.text_input("Deine KI-Spezialfähigkeit:")
-            if st.form_submit_button("PROFIL GLOBAL SPEICHERN"):
-                with st.spinner("Synchronisiere..."):
-                    current_df = get_fresh_data("Profiles")
-                    new_entry = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill}])
-                    updated_df = pd.concat([current_df, new_entry], ignore_index=True).drop_duplicates(subset=["Agent"], keep="last")
-                    conn.update(worksheet="Profiles", data=updated_df)
-                    st.success("Profil gesichert.")
-                    time.sleep(1)
-                    st.rerun()
+            a_name = st.selectbox("Identität:", AGENT_LIST)
+            c_name = st.text_input("Codename:")
+            a_skill = st.text_input("Spezialfähigkeit:")
+            if st.form_submit_button("PROFIL SPEICHERN"):
+                current_df = get_fresh_data("Profiles")
+                new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill}])
+                updated_p = pd.concat([current_df, new_p], ignore_index=True).drop_duplicates(subset=["Agent"], keep="last")
+                conn.update(worksheet="Profiles", data=updated_p)
+                st.success("Profil gesichert.")
+                time.sleep(1)
+                st.rerun()
 
         st.subheader("Aktive PCS-Agenten")
         p_df = get_fresh_data("Profiles")
@@ -126,32 +121,39 @@ else:
                 with c_grid[idx % 2]:
                     st.markdown(f'<div class="agent-card"><b>{r["Agent"]}</b><br>CODE: {r["Codename"]}<br>SKILL: {r["Skill"]}</div>', unsafe_allow_html=True)
                     if st.button(f"🗑️ LÖSCHEN: {r['Agent']}", key=f"del_{idx}"):
-                        df_to_clean = get_fresh_data("Profiles")
-                        df_cleaned = df_to_clean[df_to_clean["Agent"] != r["Agent"]]
+                        df_cleaned = p_df[p_df["Agent"] != r["Agent"]]
                         conn.update(worksheet="Profiles", data=df_cleaned)
                         st.rerun()
 
     with t2:
-        st.header("Die Sabotage-Akte")
+        st.header("📂 Die Sabotage-Akte")
         with st.form("s_form", clear_on_submit=True):
-            s_thema = st.text_input("Welcher Prozess sabotiert uns?")
-            if st.form_submit_button("AN NICO ÜBERMITTELN"):
+            s_thema = st.text_input("Thema der Sabotage (z.B. Salesforce-Sync):")
+            s_details = st.text_area("Präzise Details (Beweise/Beschreibung):")
+            if st.form_submit_button("SABOTAGE-AKTE GLOBAL SPEICHERN"):
                 if s_thema:
-                    with st.spinner("Übertrage..."):
+                    with st.spinner("Übertrage an Zentralspeicher..."):
                         current_s = get_fresh_data("Sabotage")
-                        new_s = pd.DataFrame([{"Thema": s_thema}])
-                        updated_s = pd.concat([current_s, new_s], ignore_index=True).drop_duplicates()
+                        new_s = pd.DataFrame([{"Thema": s_thema, "Details": s_details}])
+                        # Zusammenführen
+                        updated_s = pd.concat([current_s, new_s], ignore_index=True).drop_duplicates(subset=["Thema"], keep="last")
                         conn.update(worksheet="Sabotage", data=updated_s)
-                        st.success(f"'{s_thema}' archiviert.")
+                        st.success(f"Thema '{s_thema}' wurde archiviert.")
                         time.sleep(1)
                         st.rerun()
+                else:
+                    st.warning("Bitte gib mindestens ein Thema an.")
 
-        # LISTE DER AKTUELLEN SABOTAGEAKTE (Damit ihr seht, was da ist!)
-        st.subheader("Bisher identifizierte Sabotage-Themen")
-        current_sabotage_list = get_fresh_data("Sabotage")
-        if not current_sabotage_list.empty:
-            for item in current_sabotage_list["Thema"].unique():
-                st.markdown(f"• **{item}**")
+        st.subheader("Aktuelle Sabotage-Akten im Archiv")
+        s_list = get_fresh_data("Sabotage")
+        if not s_list.empty:
+            for i, row in s_list.iterrows():
+                with st.expander(f"🔎 {row['Thema']}"):
+                    st.write(f"**Details:** {row['Details'] if row['Details'] else 'Keine weiteren Details hinterlegt.'}")
+                    if st.button(f"🗑️ AKTE SCHLIESSEN/LÖSCHEN", key=f"del_s_{i}"):
+                        cleaned_s = s_list.drop(i)
+                        conn.update(worksheet="Sabotage", data=cleaned_s)
+                        st.rerun()
 
     with t3:
         st.header("💰 Operation: Golden Coin")
@@ -159,10 +161,9 @@ else:
         if df_s_vote.empty:
             st.info("Warten auf Sabotage-Themen aus Tab 2...")
         else:
-            v_agent = st.selectbox("Identität für Investment:", AGENT_LIST, key="v_sel")
+            v_agent = st.selectbox("Wer investiert?", AGENT_LIST, key="v_sel")
             t_spent = 0
             v_dict = {}
-            # Hier laden wir dynamisch alle Themen, die in Tab 2 eingetragen wurden
             for item in df_s_vote["Thema"].unique():
                 if pd.notna(item):
                     v_dict[item] = st.slider(f"INVEST: {item}", 0, 100, 0, key=f"sl_{v_agent}_{item}")
