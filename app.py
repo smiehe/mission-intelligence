@@ -3,7 +3,13 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
 
-# Basis-Konfiguration
+# WICHTIG: Das Modul für den automatischen Refresh
+try:
+    from streamlit_autorefresh import st_autorefresh
+except ImportError:
+    st_autorefresh = None
+
+# 1. Basis-Konfiguration
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
 
 # --- VERBINDUNG ZUM ZENTRALSPEICHER ---
@@ -39,7 +45,7 @@ if 'access_granted' not in st.session_state: st.session_state.access_granted = F
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- DESIGN & CSS (MAXIMALER KONTRAST) ---
+# --- DESIGN & CSS ---
 st.markdown("""
 <style>
     .stApp { background-color: #000000; color: #FFFFFF; font-size: 1.2rem; }
@@ -69,15 +75,25 @@ if not st.session_state.access_granted:
             st.session_state.mission_start_time = time.time()
             st.rerun()
 else:
+    # --- AUTO-REFRESH AKTIVIEREN (Der Herzschlag der App) ---
+    if st_autorefresh:
+        st_autorefresh(interval=1000, key="timer_heartbeat")
+
     # --- HQ BEREICH ---
     st.markdown('<div class="mission-header">NETWORK ACCESS GRANTED // PCS HQ BERLIN // STATUS: ACTIVE</div>', unsafe_allow_html=True)
 
     with st.sidebar:
         st.markdown("### ⏳ MISSION CLOCK")
         active_info = MISSION_DATA[st.session_state.active_mission_key]
-        rem_sec = max(0, (active_info['duration'] * 60) - (time.time() - st.session_state.mission_start_time))
+        # Berechnung der Restzeit
+        elapsed = time.time() - st.session_state.mission_start_time
+        rem_sec = max(0, (active_info['duration'] * 60) - elapsed)
         m, s = divmod(int(rem_sec), 60)
-        st.markdown(f'<div class="timer-display">{m:02d}:{s:02d}</div>', unsafe_allow_html=True)
+        
+        # Farbe ändert sich bei unter 5 Minuten
+        t_color = "#00FF41" if rem_sec > 300 else "#FF4B4B"
+        st.markdown(f'<div class="timer-display" style="color:{t_color}; border-color:{t_color};">{m:02d}:{s:02d}</div>', unsafe_allow_html=True)
+        
         st.markdown("---")
         st.header("📍 EINSATZPLAN")
         for k, d in MISSION_DATA.items():
@@ -102,57 +118,8 @@ else:
                 with st.spinner("Synchronisiere mit HQ..."):
                     current_df = get_fresh_data("Profiles")
                     new_entry = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill}])
-                    # Dubletten vermeiden: Der neueste Eintrag für einen Namen gewinnt
                     updated_df = pd.concat([current_df, new_entry], ignore_index=True).drop_duplicates(subset=["Agent"], keep="last")
                     conn.update(worksheet="Profiles", data=updated_df)
                     st.success(f"Profil für Agent {a_name} verriegelt.")
                     time.sleep(1)
                     st.rerun()
-
-        st.subheader("Aktive PCS-Agenten im Feld")
-        p_df = get_fresh_data("Profiles")
-        if not p_df.empty:
-            c_grid = st.columns(2)
-            for idx, r in p_df.iterrows():
-                with c_grid[idx % 2]:
-                    st.markdown(f'<div class="agent-card"><b>{r["Agent"]}</b><br><span style="color:#FFF;">CODE:</span> {r["Codename"]}<br><span style="color:#FFF;">SKILL:</span> {r["Skill"]}</div>', unsafe_allow_html=True)
-                    if st.button(f"🗑️ LÖSCHEN: {r['Agent']}", key=f"del_{idx}"):
-                        with st.spinner("Löschvorgang..."):
-                            df_to_clean = get_fresh_data("Profiles")
-                            df_cleaned = df_to_clean[df_to_clean["Agent"] != r["Agent"]]
-                            conn.update(worksheet="Profiles", data=df_cleaned)
-                            st.rerun()
-
-    with t2:
-        st.header("Die Sabotage-Akte")
-        with st.form("s_form", clear_on_submit=True):
-            s_thema = st.text_input("Welcher Prozess sabotiert uns?")
-            if st.form_submit_button("AN NICO SENDEN"):
-                if s_thema:
-                    with st.spinner("Übertrage Akte..."):
-                        current_s = get_fresh_data("Sabotage")
-                        new_s = pd.DataFrame([{"Thema": s_thema}])
-                        updated_s = pd.concat([current_s, new_s], ignore_index=True).drop_duplicates()
-                        conn.update(worksheet="Sabotage", data=updated_s)
-                        st.success(f"Thema '{s_thema}' archiviert.")
-                        time.sleep(1)
-                        st.rerun()
-
-    with t3:
-        st.header("💰 Operation: Golden Coin")
-        df_s_vote = get_fresh_data("Sabotage")
-        if df_s_vote.empty:
-            st.info("Warten auf Sabotage-Themen aus dem Vormittag...")
-        else:
-            v_agent = st.selectbox("Identität für Investment:", AGENT_LIST, key="v_sel")
-            t_spent = 0
-            v_dict = {}
-            for item in df_s_vote["Thema"].unique():
-                v_dict[item] = st.slider(f"INVEST: {item}", 0, 100, 0, key=f"sl_{v_agent}_{item}")
-                t_spent += v_dict[item]
-            
-            st.markdown(f"## Status {v_agent}: {t_spent} / 100 Coins")
-            if t_spent == 100:
-                if st.button(f"INVESTITION FÜR {v_agent} FINALISIEREN"):
-                    st.balloons()
-                    st.success("Investment-Daten sicher übertragen.")
