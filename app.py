@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 
-# Versuch, das Autorefresh-Modul zu laden
+# Autorefresh laden
 try:
     from streamlit_autorefresh import st_autorefresh
 except ImportError:
@@ -10,29 +10,23 @@ except ImportError:
 # Seiteneinstellungen
 st.set_page_config(page_title="Mission: Intelligence HQ", page_icon="🕵️‍♂️", layout="wide")
 
-# --- KONFIGURATION DER MISSIONEN ---
-MISSION_DATA = {
-    "09:00": {"name": "Operation: Agent Profile", "duration": 30},
-    "09:30": {"name": "The Intelligence Briefing (Nico)", "duration": 90},
-    "11:15": {"name": "The Deep-Dive Mission", "duration": 90},
-    "12:45": {"name": "Field Rations (Lunch)", "duration": 60},
-    "13:45": {"name": "Final Briefing (Wrap-up)", "duration": 30},
-    "15:30": {"name": "Field Operation (Museum)", "duration": 120},
-    "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
-}
-
-# Liste der PCS Agenten (Claudine am Ende)
+# --- INITIALISIERUNG ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
-# --- INITIALISIERUNG SESSION STATE ---
+# Speicher für die Sabotage-Akten (wird für das Voting genutzt)
+if 'sabotage_list' not in st.session_state:
+    st.session_state.sabotage_list = []
+
 if 'access_granted' not in st.session_state:
     st.session_state.access_granted = False
+
 if 'active_mission_key' not in st.session_state:
     st.session_state.active_mission_key = "09:00"
+
 if 'mission_start_time' not in st.session_state:
     st.session_state.mission_start_time = time.time()
 
-# --- DESIGN & KONTRAST (CSS) ---
+# --- DESIGN & CSS ---
 st.markdown("""
     <style>
     .stApp { background-color: #000000; color: #00FF41; }
@@ -46,28 +40,22 @@ st.markdown("""
         color: #00FF41; font-size: 3rem; text-align: center;
         padding: 15px; border: 2px solid #00FF41;
         background: rgba(0, 255, 65, 0.1); margin-bottom: 5px;
-        text-shadow: 0 0 15px #00FF41;
     }
     .stButton>button {
         background-color: #000000 !important; color: #00FF41 !important;
         border: 1px solid #00FF41 !important; width: 100%; text-align: left !important;
-        font-family: 'Courier New', Courier, monospace;
     }
     .stButton>button:hover { border: 1px solid #FFFFFF !important; color: #FFFFFF !important; }
-    .stTabs [data-baseweb="tab"] { color: #00FF41; border: 1px solid #00FF41; }
     input, textarea, select { 
-        background-color: #111 !important; 
-        color: #00FF41 !important; 
-        border: 1px solid #00FF41 !important; 
+        background-color: #111 !important; color: #00FF41 !important; border: 1px solid #00FF41 !important; 
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- AUTO-REFRESH ---
 if st.session_state.access_granted and st_autorefresh:
     st_autorefresh(interval=1000, key="timer_refresh")
 
-# --- STARTBILDSCHIRM ---
+# --- LOGIK: STARTBILDSCHIRM ---
 if not st.session_state.access_granted:
     st.markdown("""
         <div class="splash-container">
@@ -82,37 +70,37 @@ if not st.session_state.access_granted:
             st.session_state.mission_start_time = time.time()
             st.rerun()
 else:
-    # --- HQ SIDEBAR ---
+    # --- SIDEBAR ---
     st.sidebar.markdown("### ⏳ MISSION CLOCK")
+    mission_info = {
+        "09:00": {"name": "Operation: Agent Profile", "duration": 30},
+        "09:30": {"name": "The Intelligence Briefing (Nico)", "duration": 90},
+        "11:15": {"name": "The Deep-Dive Mission", "duration": 90},
+        "12:45": {"name": "Field Rations (Lunch)", "duration": 60},
+        "13:45": {"name": "Final Briefing (Wrap-up)", "duration": 30},
+        "15:30": {"name": "Field Operation (Museum)", "duration": 120},
+        "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
+    }
     
-    mission_info = MISSION_DATA[st.session_state.active_mission_key]
-    duration_sec = mission_info['duration'] * 60
+    current_mission = mission_info[st.session_state.active_mission_key]
     elapsed = time.time() - st.session_state.mission_start_time
-    remaining = max(0, duration_sec - elapsed)
+    remaining = max(0, (current_mission['duration'] * 60) - elapsed)
     
     mins, secs = divmod(int(remaining), 60)
     timer_col = "#00FF41" if remaining > 300 else "#FF0000"
-    
     st.sidebar.markdown(f'<div class="timer-box" style="color:{timer_col}; border-color:{timer_col};">{mins:02d}:{secs:02d}</div>', unsafe_allow_html=True)
-    st.sidebar.markdown(f"<p style='text-align:center;'>AKTIV: {mission_info['name']}</p>", unsafe_allow_html=True)
-
-    st.sidebar.markdown("---")
+    
     st.sidebar.header("📍 EINSATZPLAN")
-
-    for time_key, data in MISSION_DATA.items():
+    for time_key, data in mission_info.items():
         label = f"{time_key} | {data['name']}"
-        if time_key == st.session_state.active_mission_key:
-            label = f"▶ {label}"
+        if time_key == st.session_state.active_mission_key: label = f"▶ {label}"
         if st.sidebar.button(label, key=f"btn_{time_key}"):
             st.session_state.active_mission_key = time_key
             st.session_state.mission_start_time = time.time()
             st.rerun()
 
-    st.sidebar.markdown("---")
-    st.sidebar.info(f"PCS-Team: {', '.join(AGENT_LIST)}")
-
     # --- HAUPTBEREICH ---
-    st.title(f"🕵️‍♂️ HQ: {mission_info['name']}")
+    st.title(f"🕵️‍♂️ HQ: {current_mission['name']}")
     tab1, tab2, tab3 = st.tabs(["👤 PCS-PROFILE", "📂 SABOTAGE-AKTE", "💰 COIN-INVESTMENT"])
 
     with tab1:
@@ -126,25 +114,40 @@ else:
 
     with tab2:
         st.header("Die Sabotage-Akte")
-        with st.form("sabotage_form"):
-            p_name = st.text_input("Welcher Prozess sabotiert uns?")
+        st.write("Welche Prozesse sabotieren unsere Coordination?")
+        with st.form("sabotage_form", clear_on_submit=True):
+            p_name = st.text_input("Name des Sabotage-Akts (z.B. Salesforce-Sync):")
             desc = st.text_area("Details der Ineffizienz:")
-            if st.form_submit_button("AKTE AN NICO SENDEN"):
-                st.warning("Datenübertragung gestartet...")
+            submitted = st.form_submit_button("AKTE AN NICO SENDEN")
+            if submitted and p_name:
+                if p_name not in st.session_state.sabotage_list:
+                    st.session_state.sabotage_list.append(p_name)
+                st.success(f"'{p_name}' wurde in die Datenbank aufgenommen.")
 
     with tab3:
         st.header("💰 Operation: Golden Coin")
-        st.info("Verteilen Sie Ihre 100 Coins.")
-        voter = st.selectbox("PCS Agent für Voting:", AGENT_LIST, key="v_t3")
-        
-        projects = ["KI-Onboarding (Rexx)", "Salesforce Analyst", "Auto-Protokoll", "Kunden-Mail-Bot"]
-        total = 0
-        for p in projects:
-            val = st.slider(f"Investment: {p}", 0, 100, 0, key=f"sl_{p}")
-            total += val
-        
-        st.markdown(f"### Gesamt: `{total} / 100`")
-        if total == 100:
-            if st.button("INVESTITION FINALISIEREN"):
-                st.balloons()
-                st.success("Investment-Plan verriegelt.")
+        if not st.session_state.sabotage_list:
+            st.warning("⚠️ Keine Sabotage-Akten vorhanden. Bitte erst in Tab 2 Probleme identifizieren!")
+        else:
+            st.info("Verteilen Sie exakt 100 Coins auf die identifizierten Sabotage-Akten.")
+            voter = st.selectbox("PCS Agent für Voting:", AGENT_LIST, key="v_t3")
+            
+            total_coins = 0
+            votes = {}
+            
+            # Dynamische Slider basierend auf den Einträgen aus Tab 2
+            for s_item in st.session_state.sabotage_list:
+                votes[s_item] = st.slider(f"Investment für: {s_item}", 0, 100, 0, key=f"v_{s_item}")
+                total_coins += votes[s_item]
+            
+            st.markdown(f"### Gesamt-Investment: `{total_coins} / 100` Coins")
+            
+            if total_coins > 100:
+                st.error(f"⚠️ Budget überschritten! Bitte {total_coins - 100} Coins abziehen.")
+            elif total_coins < 100:
+                st.warning(f"Es müssen noch {100 - total_coins} Coins vergeben werden.")
+            else:
+                st.success("✅ Perfekte Budgetierung. Mission bereit zum Abschluss.")
+                if st.button("INVESTITION FINALISIEREN"):
+                    st.balloons()
+                    st.success("Investment-Daten wurden sicher ans HQ übertragen.")
