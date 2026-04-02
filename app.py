@@ -86,12 +86,12 @@ st.markdown("""
 
     /* Buttons Style */
     .stButton>button {
-        background-color: #111 !important; color: #00FF41 !important;
+        background-color: #111 !important; color: #FFFFFF !important;
         border: 3px solid #00FF41 !important; 
         height: 4rem; font-weight: bold !important; font-size: 1.2rem !important;
     }
     .stButton>button:hover {
-        background-color: #00FF41 !important; color: #000 !important;
+        background-color: #00FF41 !important; color: #FFFFFF !important;
     }
 
     /* Karten Design */
