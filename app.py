@@ -45,76 +45,102 @@ def force_reload():
     st.cache_data.clear()
     st.rerun()
 
-# --- 3. MISSION SETUP ---
+# --- 3. MISSION SETUP (KOMPAKTE AGENDA) ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
+
+# Kompakte Agenda
 MISSION_DATA = {
-    "09:00": {"name": "Operation: Agent Profile", "duration": 10},
-    "09:10": {"name": "The PM Sabotage File", "duration": 15},
-    "09:25": {"name": "Credit Allocation", "duration": 5},
-    "09:30": {"name": "Main Briefing (Nico)", "duration": 90}
+    "09:00": {"name": "Mission Warmup (Task 1-3)", "duration": 30},
+    "09:30": {"name": "The Intelligence Briefing (Nico)", "duration": 90},
+    "11:15": {"name": "The Deep-Dive Mission", "duration": 90},
+    "12:45": {"name": "Field Rations (Lunch)", "duration": 60},
+    "13:45": {"name": "Final Briefing (Wrap-up)", "duration": 30},
+    "15:30": {"name": "Field Operation (Museum)", "duration": 120},
+    "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
 if 'access_granted' not in st.session_state: st.session_state.access_granted = False
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- 4. TACTICAL CSS (LCARS DESIGN) ---
+# --- 4. PREMIUM TACTICAL CSS ---
 st.markdown("""
 <style>
     /* Basis Layout */
-    .stApp { background-color: #000000; color: #FFFFFF; font-family: 'Courier New', monospace; }
+    .stApp { background-color: #030303; color: #FFFFFF; font-family: 'Courier New', Courier, monospace; }
     
-    /* Startbildschirm */
+    /* PREMIUM STARTBILDSCHIRM */
     .splash-box {
-        text-align: center; margin-top: 5%; padding: 60px;
-        border: 4px solid #00FF41; background-color: #050505;
-        box-shadow: 0 0 50px rgba(0,255,65,0.2); border-radius: 0 50px 0 50px;
+        text-align: center; margin-top: 8vh; padding: 60px 40px;
+        border: 2px solid #00FF41; background-color: #080808;
+        box-shadow: 0 0 40px rgba(0, 255, 65, 0.15), inset 0 0 20px rgba(0, 255, 65, 0.05); 
+        border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
+    }
+    .splash-title {
+        font-size: 5.5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
+        text-shadow: 0 0 20px rgba(0, 255, 65, 0.4); margin-bottom: 20px; line-height: 1.1;
+    }
+    .splash-subtitle {
+        font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 40px; text-transform: uppercase;
     }
 
     /* Sidebar & Timer */
-    [data-testid="stSidebar"] { background-color: #050505; border-right: 5px solid #00FF41; }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 1.25rem !important; }
+    [data-testid="stSidebar"] { background-color: #080808; border-right: 2px solid #00FF41; }
+    [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 1.1rem !important; }
     .timer-display {
-        font-family: 'Courier New', monospace; color: #00FF41; font-size: 4rem; text-align: center;
-        border: 4px solid #00FF41; border-radius: 15px; padding: 20px; background: #000;
-        text-shadow: 0 0 15px #00FF41; margin-bottom: 20px;
+        font-family: 'Courier New', monospace; color: #00FF41; font-size: 3.8rem; text-align: center;
+        border: 2px solid #00FF41; border-radius: 12px; padding: 15px; background: #000;
+        box-shadow: 0 0 20px rgba(0, 255, 65, 0.15); margin-bottom: 25px; font-weight: bold;
     }
 
-    /* Header & Buttons */
+    /* Header Panel */
     .mission-header {
-        width: 100%; background-color: #00FF41; color: #000; padding: 15px; font-weight: bold; 
-        font-size: 1.5rem; letter-spacing: 5px; margin-top: -75px; 
-        margin-bottom: 40px; border-radius: 0 0 30px 0;
+        width: 100%; background-color: #00FF41; color: #000; padding: 12px 20px; font-weight: 900; 
+        font-size: 1.4rem; letter-spacing: 4px; margin-top: -65px; 
+        margin-bottom: 35px; border-radius: 0 0 12px 12px;
+        box-shadow: 0 4px 15px rgba(0,255,65,0.2);
     }
+
+    /* PREMIUM BUTTONS */
     .stButton>button {
-        background-color: #111 !important; color: #FFFFFF !important;
-        border: 3px solid #00FF41 !important; height: 3.5rem; font-weight: bold !important;
+        background-color: #080808 !important; color: #00FF41 !important;
+        border: 2px solid #00FF41 !important; height: 3.8rem; font-weight: bold !important;
+        border-radius: 8px !important; transition: all 0.3s ease !important;
+        text-transform: uppercase; letter-spacing: 1px;
     }
-    .stButton>button:hover { background-color: #00FF41 !important; color: #000 !important; }
+    .stButton>button:hover { 
+        background-color: #00FF41 !important; color: #000 !important; 
+        box-shadow: 0 0 15px rgba(0,255,65,0.4) !important;
+        transform: translateY(-2px);
+    }
 
     /* Textfelder & Typografie */
-    label, p, span, div { color: #FFFFFF !important; font-size: 1.3rem !important; }
-    label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.4rem !important; }
+    label, p, span, div { color: #E0E0E0 !important; font-size: 1.2rem !important; }
+    label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; margin-bottom: 8px; }
+    
     input, textarea { 
-        background-color: #000 !important; color: #FFF !important; 
-        border: 2px solid #00FF41 !important; font-size: 1.3rem !important;
+        background-color: #050505 !important; color: #FFF !important; 
+        border: 1px solid #00FF41 !important; border-radius: 6px !important;
+        font-size: 1.2rem !important; padding: 10px !important;
+    }
+    input:focus, textarea:focus {
+        box-shadow: 0 0 10px rgba(0,255,65,0.3) !important;
+        outline: none !important;
     }
 
-    /* --- DROPDOWN MENÜ FIX --- */
-    /* Geschlossenes Feld (Grün) */
+    /* --- DROPDOWN MENÜ FIX (Schick & Lesbar) --- */
     div[data-baseweb="select"] > div {
-        background-color: #00FF41 !important; border: 2px solid #00FF41 !important;
+        background-color: #00FF41 !important; border: none !important; border-radius: 6px !important;
     }
-    div[data-baseweb="select"] span { color: #000000 !important; font-weight: bold !important; }
+    div[data-baseweb="select"] span { color: #000000 !important; font-weight: 900 !important; }
     div[data-baseweb="select"] svg { fill: #000000 !important; }
     
-    /* Offene Liste (Schwarz mit grünem Text) */
     div[data-baseweb="popover"], ul[role="listbox"] {
-        background-color: #000000 !important; border: 1px solid #00FF41 !important;
+        background-color: #080808 !important; border: 1px solid #00FF41 !important; border-radius: 6px !important;
     }
     li[role="option"] {
-        background-color: #000000 !important; color: #00FF41 !important; 
-        font-weight: bold !important; border-bottom: 1px solid #111;
+        background-color: #080808 !important; color: #00FF41 !important; 
+        font-weight: bold !important; border-bottom: 1px solid #111; padding: 12px !important;
     }
     li[role="option"]:hover, li[role="option"][aria-selected="true"] {
         background-color: #00FF41 !important; color: #000000 !important;
@@ -122,22 +148,42 @@ st.markdown("""
     /* ------------------------- */
 
     /* Tabs & Boxen */
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
-        color: #00FF41 !important; border: 2px solid #00FF41 !important;
-        background: #111 !important; font-size: 1.3rem !important;
+        color: #00FF41 !important; border: 1px solid #00FF41 !important; border-bottom: none !important;
+        background: #080808 !important; font-size: 1.2rem !important; border-radius: 8px 8px 0 0 !important;
+        padding: 10px 20px !important; transition: all 0.3s ease;
     }
-    .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #000 !important; }
-    .prompt-box { border: 1px dashed #00FF41; padding: 15px; background: #111; margin-bottom: 20px; font-size: 1.1rem !important; }
+    .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #000 !important; font-weight: bold !important; }
+    
+    .prompt-box { 
+        border: 1px dashed #00FF41; padding: 20px; background: #0A0A0A; 
+        margin-bottom: 25px; font-size: 1.1rem !important; border-radius: 8px;
+        border-left: 5px solid #00FF41;
+    }
+    
+    /* Expander Design */
+    [data-testid="stExpander"] {
+        border: 1px solid #00FF41 !important; border-radius: 8px !important; background: #080808 !important;
+    }
+    [data-testid="stExpander"] summary p { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 5. APP INTERFACE ---
 if not st.session_state.access_granted:
-    # STARTBILDSCHIRM
-    st.markdown('<div class="splash-box"><h1 style="color:#00FF41; font-size:5rem;">PCS<br>INTELLIGENCE</h1><p>AUTHORIZATION REQUIRED</p></div>', unsafe_allow_html=True)
+    # STARTBILDSCHIRM (Schick & Modern)
+    st.markdown("""
+        <div class="splash-box">
+            <div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 15px;">/// SYSTEM LOCKED ///</div>
+            <div class="splash-title">PCS<br>INTELLIGENCE</div>
+            <div class="splash-subtitle">Network Authorization Required &nbsp;&bull;&nbsp; Q1 2026</div>
+        </div>
+    """, unsafe_allow_html=True)
     _, col_mid, _ = st.columns([1,1,1])
     with col_mid:
-        if st.button("INITIATE ACCESS"):
+        st.write("") # Spacer
+        if st.button("INITIATE UPLINK", use_container_width=True):
             st.session_state.access_granted = True
             st.session_state.mission_start_time = time.time()
             st.rerun()
@@ -169,7 +215,7 @@ else:
                 st.rerun()
         
         st.markdown("---")
-        if st.button("SYNC SYSTEM"): force_reload()
+        if st.button("SYNC SYSTEM", use_container_width=True): force_reload()
 
     # -- TABS --
     t1, t2, t3 = st.tabs(["👤 PERSONNEL", "📂 SABOTAGE", "💰 CREDITS"])
@@ -177,7 +223,7 @@ else:
     # TAB 1: PERSONNEL (Aufgabe 1)
     with t1:
         st.header("Task 1: Agenten-Identität")
-        st.markdown('<div class="prompt-box"><b>GAIA Prompt:</b> "Ich nehme heute an einem Workshop zum Thema KI im PM teil. Erstelle mir eine Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Agentenname, Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
+        st.markdown('<div class="prompt-box"><b>GAIA Prompt:</b><br>"Ich nehme heute an einem Workshop zum Thema KI im PM teil. Erstelle mir eine Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Agentenname, Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
         
         top_c1, top_c2 = st.columns([0.7, 0.3])
         with top_c1: st.subheader("Identität registrieren:")
@@ -194,7 +240,7 @@ else:
         if save_p and c_name:
             df_p = get_cached_data("Profiles")
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
-            if not df_p.empty: df_p = df_p[df_p["Agent"] != a_name] # Überschreibt alten Eintrag des Agents
+            if not df_p.empty: df_p = df_p[df_p["Agent"] != a_name] 
             updated_p = pd.concat([df_p, new_p], ignore_index=True)
             conn.update(worksheet="Profiles", data=updated_p)
             st.success("DATA COMMITTED")
@@ -208,7 +254,6 @@ else:
                 with st.expander(f"👤 {r['Agent']} // Code: {r.get('Codename', '')}"):
                     st.write(f"**Perspektive:** {r.get('Skill', '')}")
                     st.write(f"**Leitfragen:** {r.get('Questions', '')}")
-                    # Sicheres Löschen anhand des Namens
                     if st.button("🗑️ DATENSATZ LÖSCHEN", key=f"del_p_{r['Agent']}"):
                         cleaned_df = p_list[p_list["Agent"] != r["Agent"]]
                         conn.update(worksheet="Profiles", data=cleaned_df)
@@ -257,10 +302,10 @@ else:
                 spent += val
             
             c_status = "#00FF41" if spent == 100 else "#FF4B4B"
-            st.markdown(f"### Gesamt: <span style='color:{c_status};'>{spent} / 100</span>", unsafe_allow_html=True)
+            st.markdown(f"### Gesamt: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100</span>", unsafe_allow_html=True)
             
             if spent == 100:
-                if st.button("FINALIZE TRANSACTION"):
+                if st.button("FINALIZE TRANSACTION", use_container_width=True):
                     vote_row = {"Voter": voter, "Total": 100}
                     vote_row.update(investments)
                     df_v = get_cached_data("Votes")
