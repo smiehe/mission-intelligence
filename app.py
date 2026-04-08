@@ -3,7 +3,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
 
-# Autorefresh für den flüssigen Takt (Timer)
+# Autorefresh für den Timer
 try:
     from streamlit_autorefresh import st_autorefresh
 except ImportError:
@@ -19,10 +19,9 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def get_cached_data(ws_name):
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
-        if df is None:
-            df = pd.DataFrame()
-            
-        # Struktur-Sicherung: Falls Spalten fehlen, hier ergänzen
+        if df is None: df = pd.DataFrame()
+        
+        # Struktur-Sicherung gegen KeyErrors
         if ws_name == "Profiles":
             for col in ["Agent", "Codename", "Skill", "Questions"]:
                 if col not in df.columns: df[col] = ""
@@ -32,7 +31,6 @@ def get_cached_data(ws_name):
         elif ws_name == "Votes":
             for col in ["Voter", "Total"]:
                 if col not in df.columns: df[col] = ""
-                    
         return df.dropna(how="all")
     except:
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill", "Questions"])
@@ -57,9 +55,10 @@ if 'access_granted' not in st.session_state: st.session_state.access_granted = F
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- STYLING (MAXIMALER KONTRAST & LCARS) ---
+# --- STYLING (HARTES LCARS + DROPDOWN FIX) ---
 st.markdown("""
 <style>
+    /* Grund-Design */
     .stApp { background-color: #000000; color: #FFFFFF; font-family: 'Courier New', monospace; }
     
     .splash-box {
@@ -68,27 +67,32 @@ st.markdown("""
         box-shadow: 0 0 50px rgba(0,255,65,0.2); border-radius: 0 50px 0 50px;
     }
 
+    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #050505; border-right: 5px solid #00FF41; }
     [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 1.25rem !important; }
 
+    /* Timer */
     .timer-display {
         font-family: 'Courier New', monospace; color: #00FF41; font-size: 4rem; text-align: center;
         border: 4px solid #00FF41; border-radius: 15px; padding: 20px; background: #000;
         text-shadow: 0 0 15px #00FF41; margin-bottom: 20px;
     }
 
+    /* Header */
     .mission-header {
         width: 100%; background-color: #00FF41; color: #000; padding: 15px; font-weight: bold; 
         font-size: 1.5rem; letter-spacing: 5px; margin-top: -75px; 
         margin-bottom: 40px; border-radius: 0 0 30px 0;
     }
 
+    /* Buttons */
     .stButton>button {
         background-color: #111 !important; color: #FFFFFF !important;
         border: 3px solid #00FF41 !important; height: 3.5rem; font-weight: bold !important;
     }
     .stButton>button:hover { background-color: #00FF41 !important; color: #000 !important; }
 
+    /* Texte & Inputs */
     label, p, span, div { color: #FFFFFF !important; font-size: 1.3rem !important; }
     label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.4rem !important; }
     
@@ -97,34 +101,32 @@ st.markdown("""
         border: 2px solid #00FF41 !important; font-size: 1.3rem !important;
     }
 
-    /* FIX: DROPDOWN MENÜ LESBARKEIT (Schwarz auf Grün im Feld, Grün auf Schwarz in Liste) */
-    div[data-baseweb="select"] > div {
-        background-color: #00FF41 !important;
-        border: 2px solid #00FF41 !important;
-    }
-    div[data-baseweb="select"] span {
-        color: #000000 !important; /* Text im geschlossenen Feld */
-        font-weight: bold !important;
-    }
-    
-    /* Die aufklappende Liste (Popover) */
-    div[data-baseweb="popover"] {
-        background-color: #000000 !important;
-    }
-    
-    /* Die einzelnen Optionen in der Liste */
-    li[data-baseweb="option"] {
-        background-color: #000000 !important;
-        color: #00FF41 !important; /* Tactical Green */
-        font-weight: bold !important;
-        border-bottom: 1px solid #111;
-    }
-    
-    /* Hover-Effekt in der Liste */
-    li[data-baseweb="option"]:hover {
+    /* --- DIE LÖSUNG FÜR DAS DROPDOWN --- */
+    /* Das Feld selbst: Grün mit schwarzem Text */
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
         background-color: #00FF41 !important;
         color: #000000 !important;
     }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] * {
+        color: #000000 !important;
+        font-weight: bold !important;
+    }
+
+    /* Die aufklappende Liste (Globaler Override) */
+    div[role="listbox"] {
+        background-color: #000000 !important;
+        border: 1px solid #00FF41 !important;
+    }
+    div[role="option"], li[data-baseweb="option"] {
+        background-color: #000000 !important;
+        color: #00FF41 !important; /* Leuchtend Grün auf Schwarz */
+        font-weight: bold !important;
+    }
+    div[role="option"]:hover, li[data-baseweb="option"]:hover {
+        background-color: #00FF41 !important;
+        color: #000000 !important; /* Invertiert beim Drüberfahren */
+    }
+    /* Ende Dropdown Fix */
 
     .stTabs [data-baseweb="tab"] {
         color: #00FF41 !important; border: 2px solid #00FF41 !important;
@@ -151,7 +153,7 @@ else:
 
     st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // SECURE ACCESS</div>', unsafe_allow_html=True)
 
-    # --- SIDEBAR ---
+    # SIDEBAR
     with st.sidebar:
         st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
@@ -174,13 +176,13 @@ else:
         st.markdown("---")
         if st.button("SYNC SYSTEM"): force_reload()
 
-    # --- MAIN TERMINAL TABS ---
+    # TABS
     t1, t2, t3 = st.tabs(["👤 PERSONNEL", "📂 SABOTAGE", "💰 CREDITS"])
 
     # TAB 1: PERSONNEL
     with t1:
         st.header("Task 1: Agenten-Identität")
-        st.markdown('<div class="prompt-box"><b>GAIA Master-Prompt:</b> "Ich nehme heute an einem Team-Workshop zum Thema KI im Projektmanagement teil. Erstelle mir eine professionelle Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Einen Agentennamen, meine Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
+        st.markdown('<div class="prompt-box"><b>GAIA Prompt:</b> "Ich nehme heute an einem Workshop zum Thema KI im PM teil. Erstelle mir eine Agenten-Identität... [Stärken/Schwächen ergänzen]. Generiere: Agentenname, Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
         
         top_c1, top_c2 = st.columns([0.7, 0.3])
         with top_c1: st.subheader("Identität registrieren:")
@@ -191,17 +193,16 @@ else:
             a_name = st.selectbox("Identify Real Agent:", AGENT_LIST)
             c_name = st.text_input("Agentenname (von GAIA):")
         with c2:
-            a_skill = st.text_input("Perspektive (z.B. Risiko-Detektor):")
+            a_skill = st.text_input("Sichtweise:")
             a_ques = st.text_area("Deine 3 Leitfragen:")
 
         if save_p and c_name:
             df_p = get_cached_data("Profiles")
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
-            if not df_p.empty:
-                df_p = df_p[df_p["Agent"] != a_name]
+            if not df_p.empty: df_p = df_p[df_p["Agent"] != a_name]
             updated_p = pd.concat([df_p, new_p], ignore_index=True)
             conn.update(worksheet="Profiles", data=updated_p)
-            st.success("AGENT SECURED")
+            st.success("DATA COMMITTED")
             force_reload()
 
         st.markdown("---")
@@ -209,26 +210,22 @@ else:
         p_list = get_cached_data("Profiles")
         if not p_list.empty:
             for idx, r in p_list.iterrows():
+                # Ausklapp-Menü wie gewünscht
                 with st.expander(f"👤 {r['Agent']} // Code: {r.get('Codename', 'N/A')}"):
-                    col_info, col_del = st.columns([0.9, 0.1])
-                    with col_info:
-                        st.write(f"**Sichtweise:** {r.get('Skill', 'N/A')}")
-                        st.write(f"**Leitfragen:** {r.get('Questions', 'Keine hinterlegt')}")
-                    with col_del:
-                        if st.button("🗑️", key=f"del_p_{idx}"):
-                            conn.update(worksheet="Profiles", data=p_list.drop(idx))
-                            force_reload()
+                    st.write(f"**Perspektive:** {r.get('Skill', 'N/A')}")
+                    st.write(f"**Leitfragen:** {r.get('Questions', 'Keine hinterlegt')}")
+                    if st.button("🗑️ DATENSATZ LÖSCHEN", key=f"del_p_{idx}"):
+                        conn.update(worksheet="Profiles", data=p_list.drop(idx))
+                        force_reload()
 
     # TAB 2: SABOTAGE
     with t2:
         top_c1s, top_c2s = st.columns([0.7, 0.3])
         with top_c1s: st.header("Task 2: Die Sabotage-Akte")
-        with top_c2s: 
-            st.write(" ")
-            save_s = st.button("SUBMIT REPORT", use_container_width=True)
+        with top_c2s: save_s = st.button("SUBMIT REPORT", use_container_width=True)
 
         s_thema = st.text_input("Name des Saboteurs:")
-        s_details = st.text_area("Wie sabotiert er deine Arbeit?")
+        s_details = st.text_area("Details der Sabotage:")
 
         if save_s and s_thema:
             df_s = get_cached_data("Sabotage")
@@ -242,31 +239,28 @@ else:
         s_list = get_cached_data("Sabotage")
         for idx, r in s_list.iterrows():
             with st.expander(f"🔴 ALERT: {r['Thema']}"):
-                col_s, col_sd = st.columns([0.9, 0.1])
-                with col_s: st.write(f"DETAILS: {r['Details']}")
-                with col_sd:
-                    if st.button("🗑️", key=f"del_s_{idx}"):
-                        conn.update(worksheet="Sabotage", data=s_list.drop(idx))
-                        force_reload()
+                st.write(f"DETAILS: {r['Details']}")
+                if st.button("🗑️ AKTE SCHLIEẞEN", key=f"del_s_{idx}"):
+                    conn.update(worksheet="Sabotage", data=s_list.drop(idx))
+                    force_reload()
 
     # TAB 3: CREDITS
     with t3:
         st.header("Task 3: Credit Investment")
         df_coins = get_cached_data("Sabotage")
         if df_coins.empty:
-            st.info("Warten auf Sabotage-Berichte...")
+            st.info("Awaiting reports...")
         else:
             voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
             spent = 0
             investments = {}
             for item in df_coins["Thema"].unique():
-                val = st.slider(f"Investment für {item}:", 0, 100, 0, key=f"c_{voter}_{item}")
+                val = st.slider(f"Investment: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
                 investments[item] = val
                 spent += val
             
             c_status = "#00FF41" if spent == 100 else "#FF4B4B"
-            st.markdown(f"### Gesamt: <span style='color:{c_status};'>{spent} / 100 Credits</span>", unsafe_allow_html=True)
-            
+            st.markdown(f"### Gesamt: <span style='color:{c_status};'>{spent} / 100</span>", unsafe_allow_html=True)
             if spent == 100:
                 if st.button("FINALIZE TRANSACTION"):
                     vote_row = {"Voter": voter, "Total": 100}
