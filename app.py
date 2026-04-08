@@ -19,12 +19,26 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def get_cached_data(ws_name):
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
-        if df is None or df.empty:
-            if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill", "Questions"])
-            if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
-            if ws_name == "Votes": return pd.DataFrame(columns=["Voter", "Total"])
+        if df is None:
+            df = pd.DataFrame()
+            
+        # Struktur-Sicherung: Falls Spalten im Sheet fehlen, hier ergänzen
+        if ws_name == "Profiles":
+            for col in ["Agent", "Codename", "Skill", "Questions"]:
+                if col not in df.columns:
+                    df[col] = ""
+        elif ws_name == "Sabotage":
+            for col in ["Thema", "Details"]:
+                if col not in df.columns:
+                    df[col] = ""
+        elif ws_name == "Votes":
+            for col in ["Voter", "Total"]:
+                if col not in df.columns:
+                    df[col] = ""
+                    
         return df.dropna(how="all")
     except:
+        # Fallback bei komplettem Verbindungsabbruch
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill", "Questions"])
         if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
         if ws_name == "Votes": return pd.DataFrame(columns=["Voter", "Total"])
@@ -34,7 +48,7 @@ def force_reload():
     st.cache_data.clear()
     st.rerun()
 
-# --- KONFIGURATION (Agenda aus Warmup-Doku) ---
+# --- MISSIONS-DATEN ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 MISSION_DATA = {
     "09:00": {"name": "Operation: Agent Profile", "duration": 10},
@@ -145,9 +159,9 @@ else:
     # --- MAIN TERMINAL TABS ---
     t1, t2, t3 = st.tabs(["👤 PERSONNEL", "📂 SABOTAGE", "💰 CREDITS"])
 
-    # TAB 1: PERSONNEL (Aufgabe 1)
+    # TAB 1: PERSONNEL
     with t1:
-        st.header("Task 1: Agenten-Identität (Warmup)")
+        st.header("Task 1: Agenten-Identität")
         st.markdown('<div class="prompt-box"><b>GAIA Master-Prompt:</b> "Ich nehme heute an einem Team-Workshop zum Thema KI im Projektmanagement teil. Erstelle mir eine professionelle Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Einen Agentennamen, meine Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
         
         top_c1, top_c2 = st.columns([0.7, 0.3])
@@ -159,15 +173,18 @@ else:
             a_name = st.selectbox("Identify Real Agent:", AGENT_LIST)
             c_name = st.text_input("Agentenname (von GAIA):")
         with c2:
-            a_skill = st.text_input("Perspektive (z.B. Ethik-Anwalt):")
+            a_skill = st.text_input("Perspektive (z.B. Risiko-Detektor):")
             a_ques = st.text_area("Deine 3 Leitfragen:")
 
         if save_p and c_name:
             df_p = get_cached_data("Profiles")
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
-            updated_p = pd.concat([df_p[df_p["Agent"] != a_name], new_p], ignore_index=True)
+            # Bestehende Daten für diesen Agenten entfernen
+            if not df_p.empty:
+                df_p = df_p[df_p["Agent"] != a_name]
+            updated_p = pd.concat([df_p, new_p], ignore_index=True)
             conn.update(worksheet="Profiles", data=updated_p)
-            st.success("AGENT SECURED IN DATABASE")
+            st.success("AGENT SECURED")
             force_reload()
 
         st.markdown("---")
@@ -175,77 +192,25 @@ else:
         p_list = get_cached_data("Profiles")
         if not p_list.empty:
             for idx, r in p_list.iterrows():
-                # Sinnvolle Auflistung per Expander
-                with st.expander(f"👤 {r['Agent']} // Code: {r['Codename']}"):
+                # Expander für sauberes Layout
+                with st.expander(f"👤 {r['Agent']} // Code: {r.get('Codename', 'N/A')}"):
                     col_info, col_del = st.columns([0.9, 0.1])
                     with col_info:
-                        st.write(f"**Sichtweise:** {r['Skill']}")
-                        st.write(f"**Leitfragen:** {r['Questions']}")
+                        st.write(f"**Sichtweise:** {r.get('Skill', 'N/A')}")
+                        st.write(f"**Leitfragen:** {r.get('Questions', 'Keine hinterlegt')}")
                     with col_del:
                         if st.button("🗑️", key=f"del_p_{idx}"):
-                            conn.update(worksheet="Profiles", data=p_list[p_list["Agent"] != r["Agent"]])
+                            conn.update(worksheet="Profiles", data=p_list.drop(idx))
                             force_reload()
 
-    # TAB 2: SABOTAGE (Aufgabe 2)
+    # TAB 2: SABOTAGE
     with t2:
         top_c1s, top_c2s = st.columns([0.7, 0.3])
         with top_c1s: 
             st.header("Task 2: Die Sabotage-Akte")
-            st.write("Identifiziere 'Saboteure' wie Doku-Dämonen oder Reporting-Monster.")
         with top_c2s: 
             st.write(" ")
             save_s = st.button("SUBMIT REPORT", use_container_width=True)
 
-        s_thema = st.text_input("Name des Saboteurs (z.B. Termin-Terror):")
-        s_details = st.text_area("Wie sabotiert er deine Arbeit?")
-
-        if save_s and s_thema:
-            df_s = get_cached_data("Sabotage")
-            new_s = pd.DataFrame([{"Thema": s_thema, "Details": s_details}])
-            updated_s = pd.concat([df_s, new_s], ignore_index=True).drop_duplicates(subset=["Thema"])
-            conn.update(worksheet="Sabotage", data=updated_s)
-            st.success("BREACH REGISTERED")
-            force_reload()
-
-        st.markdown("---")
-        s_list = get_cached_data("Sabotage")
-        for idx, r in s_list.iterrows():
-            with st.expander(f"🔴 ALERT: {r['Thema']}"):
-                col_s, col_sd = st.columns([0.9, 0.1])
-                with col_s: st.write(f"DETAILS: {r['Details']}")
-                with col_sd:
-                    if st.button("🗑️", key=f"del_s_{idx}"):
-                        conn.update(worksheet="Sabotage", data=s_list[s_list["Thema"] != r["Thema"]])
-                        force_reload()
-
-    # TAB 3: CREDITS (Aufgabe 3)
-    with t3:
-        st.header("Task 3: Credit Investment")
-        df_coins = get_cached_data("Sabotage")
-        if df_coins.empty:
-            st.info("Warten auf Sabotage-Berichte für das Investment...")
-        else:
-            voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
-            spent = 0
-            investments = {}
-            for item in df_coins["Thema"].unique():
-                val = st.slider(f"Investment für {item}:", 0, 100, 0, key=f"c_{voter}_{item}")
-                investments[item] = val
-                spent += val
-            
-            c_status = "#00FF41" if spent == 100 else "#FF4B4B"
-            st.markdown(f"### Gesamt: <span style='color:{c_status};'>{spent} / 100 Credits</span>", unsafe_allow_html=True)
-            
-            if spent == 100:
-                if st.button("FINALIZE TRANSACTION"):
-                    vote_row = {"Voter": voter, "Total": 100}
-                    vote_row.update(investments)
-                    df_v = get_cached_data("Votes")
-                    if not df_v.empty: df_v = df_v[df_v["Voter"] != voter]
-                    conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
-                    st.balloons()
-                    st.success("TRANSACTION SECURED")
-            elif spent > 100:
-                st.error(f"Budget überschritten! Entferne {spent - 100} Credits.")
-            else:
-                st.warning(f"Verteile noch {100 - spent} Credits.")
+        s_thema = st.text_input("Name des Saboteurs:")
+        s_details = st.
