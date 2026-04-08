@@ -22,23 +22,19 @@ def get_cached_data(ws_name):
         if df is None:
             df = pd.DataFrame()
             
-        # Struktur-Sicherung: Falls Spalten im Sheet fehlen, hier ergänzen
+        # Struktur-Sicherung: Falls Spalten fehlen, hier ergänzen
         if ws_name == "Profiles":
             for col in ["Agent", "Codename", "Skill", "Questions"]:
-                if col not in df.columns:
-                    df[col] = ""
+                if col not in df.columns: df[col] = ""
         elif ws_name == "Sabotage":
             for col in ["Thema", "Details"]:
-                if col not in df.columns:
-                    df[col] = ""
+                if col not in df.columns: df[col] = ""
         elif ws_name == "Votes":
             for col in ["Voter", "Total"]:
-                if col not in df.columns:
-                    df[col] = ""
+                if col not in df.columns: df[col] = ""
                     
         return df.dropna(how="all")
     except:
-        # Fallback bei komplettem Verbindungsabbruch
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill", "Questions"])
         if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
         if ws_name == "Votes": return pd.DataFrame(columns=["Voter", "Total"])
@@ -48,7 +44,7 @@ def force_reload():
     st.cache_data.clear()
     st.rerun()
 
-# --- MISSIONS-DATEN ---
+# --- KONFIGURATION ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 MISSION_DATA = {
     "09:00": {"name": "Operation: Agent Profile", "duration": 10},
@@ -57,12 +53,11 @@ MISSION_DATA = {
     "09:30": {"name": "Main Briefing (Nico)", "duration": 90}
 }
 
-# --- SYSTEM STATUS ---
 if 'access_granted' not in st.session_state: st.session_state.access_granted = False
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- STYLING (HARTES LCARS DESIGN) ---
+# --- STYLING (MAXIMALER KONTRAST & LCARS) ---
 st.markdown("""
 <style>
     .stApp { background-color: #000000; color: #FFFFFF; font-family: 'Courier New', monospace; }
@@ -102,11 +97,34 @@ st.markdown("""
         border: 2px solid #00FF41 !important; font-size: 1.3rem !important;
     }
 
-    /* FIX: SCHWARZER TEXT AUF GRÜNEM GRUND FÜR SELECTBOX */
-    div[data-baseweb="select"] > div { background-color: #00FF41 !important; border: 2px solid #00FF41 !important; }
-    div[data-baseweb="select"] span { color: #000000 !important; font-weight: bold !important; }
-    div[data-baseweb="select"] svg { fill: #000000 !important; }
-    li[data-baseweb="option"] { color: #000000 !important; }
+    /* FIX: DROPDOWN MENÜ LESBARKEIT (Schwarz auf Grün im Feld, Grün auf Schwarz in Liste) */
+    div[data-baseweb="select"] > div {
+        background-color: #00FF41 !important;
+        border: 2px solid #00FF41 !important;
+    }
+    div[data-baseweb="select"] span {
+        color: #000000 !important; /* Text im geschlossenen Feld */
+        font-weight: bold !important;
+    }
+    
+    /* Die aufklappende Liste (Popover) */
+    div[data-baseweb="popover"] {
+        background-color: #000000 !important;
+    }
+    
+    /* Die einzelnen Optionen in der Liste */
+    li[data-baseweb="option"] {
+        background-color: #000000 !important;
+        color: #00FF41 !important; /* Tactical Green */
+        font-weight: bold !important;
+        border-bottom: 1px solid #111;
+    }
+    
+    /* Hover-Effekt in der Liste */
+    li[data-baseweb="option"]:hover {
+        background-color: #00FF41 !important;
+        color: #000000 !important;
+    }
 
     .stTabs [data-baseweb="tab"] {
         color: #00FF41 !important; border: 2px solid #00FF41 !important;
@@ -165,7 +183,7 @@ else:
         st.markdown('<div class="prompt-box"><b>GAIA Master-Prompt:</b> "Ich nehme heute an einem Team-Workshop zum Thema KI im Projektmanagement teil. Erstelle mir eine professionelle Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Einen Agentennamen, meine Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
         
         top_c1, top_c2 = st.columns([0.7, 0.3])
-        with top_c1: st.subheader("Neue Identität registrieren:")
+        with top_c1: st.subheader("Identität registrieren:")
         with top_c2: save_p = st.button("COMMIT TO DATABASE", use_container_width=True)
 
         c1, c2 = st.columns(2)
@@ -179,7 +197,6 @@ else:
         if save_p and c_name:
             df_p = get_cached_data("Profiles")
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
-            # Bestehende Daten für diesen Agenten entfernen
             if not df_p.empty:
                 df_p = df_p[df_p["Agent"] != a_name]
             updated_p = pd.concat([df_p, new_p], ignore_index=True)
@@ -192,7 +209,6 @@ else:
         p_list = get_cached_data("Profiles")
         if not p_list.empty:
             for idx, r in p_list.iterrows():
-                # Expander für sauberes Layout
                 with st.expander(f"👤 {r['Agent']} // Code: {r.get('Codename', 'N/A')}"):
                     col_info, col_del = st.columns([0.9, 0.1])
                     with col_info:
@@ -206,8 +222,7 @@ else:
     # TAB 2: SABOTAGE
     with t2:
         top_c1s, top_c2s = st.columns([0.7, 0.3])
-        with top_c1s: 
-            st.header("Task 2: Die Sabotage-Akte")
+        with top_c1s: st.header("Task 2: Die Sabotage-Akte")
         with top_c2s: 
             st.write(" ")
             save_s = st.button("SUBMIT REPORT", use_container_width=True)
