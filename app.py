@@ -213,4 +213,51 @@ else:
             save_s = st.button("SUBMIT REPORT", use_container_width=True)
 
         s_thema = st.text_input("Name des Saboteurs:")
-        s_details = st.
+        s_details = st.text_area("Wie sabotiert er deine Arbeit?")
+
+        if save_s and s_thema:
+            df_s = get_cached_data("Sabotage")
+            new_s = pd.DataFrame([{"Thema": s_thema, "Details": s_details}])
+            updated_s = pd.concat([df_s, new_s], ignore_index=True).drop_duplicates(subset=["Thema"])
+            conn.update(worksheet="Sabotage", data=updated_s)
+            st.success("BREACH REGISTERED")
+            force_reload()
+
+        st.markdown("---")
+        s_list = get_cached_data("Sabotage")
+        for idx, r in s_list.iterrows():
+            with st.expander(f"🔴 ALERT: {r['Thema']}"):
+                col_s, col_sd = st.columns([0.9, 0.1])
+                with col_s: st.write(f"DETAILS: {r['Details']}")
+                with col_sd:
+                    if st.button("🗑️", key=f"del_s_{idx}"):
+                        conn.update(worksheet="Sabotage", data=s_list.drop(idx))
+                        force_reload()
+
+    # TAB 3: CREDITS
+    with t3:
+        st.header("Task 3: Credit Investment")
+        df_coins = get_cached_data("Sabotage")
+        if df_coins.empty:
+            st.info("Warten auf Sabotage-Berichte...")
+        else:
+            voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
+            spent = 0
+            investments = {}
+            for item in df_coins["Thema"].unique():
+                val = st.slider(f"Investment für {item}:", 0, 100, 0, key=f"c_{voter}_{item}")
+                investments[item] = val
+                spent += val
+            
+            c_status = "#00FF41" if spent == 100 else "#FF4B4B"
+            st.markdown(f"### Gesamt: <span style='color:{c_status};'>{spent} / 100 Credits</span>", unsafe_allow_html=True)
+            
+            if spent == 100:
+                if st.button("FINALIZE TRANSACTION"):
+                    vote_row = {"Voter": voter, "Total": 100}
+                    vote_row.update(investments)
+                    df_v = get_cached_data("Votes")
+                    if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
+                    conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
+                    st.balloons()
+                    st.success("TRANSACTION SECURED")
