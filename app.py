@@ -15,7 +15,7 @@ st.set_page_config(page_title="PCS Intelligence HQ", page_icon="🚀", layout="w
 # --- DATA ENGINE (GSHEETS) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=5) # Kurzer Cache für flüssige Bedienung
+@st.cache_data(ttl=5)
 def get_cached_data(ws_name):
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
@@ -31,11 +31,10 @@ def get_cached_data(ws_name):
         return pd.DataFrame()
 
 def force_reload():
-    """Löscht den Cache und erzwingt Daten-Synchronisation."""
     st.cache_data.clear()
     st.rerun()
 
-# --- MISSIONS-DATEN (Warmup Agenda) ---
+# --- KONFIGURATION (Agenda aus Warmup-Doku) ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 MISSION_DATA = {
     "09:00": {"name": "Operation: Agent Profile", "duration": 10},
@@ -49,7 +48,7 @@ if 'access_granted' not in st.session_state: st.session_state.access_granted = F
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- STYLING (HARTES LCARS / TACTICAL DESIGN) ---
+# --- STYLING (HARTES LCARS DESIGN) ---
 st.markdown("""
 <style>
     .stApp { background-color: #000000; color: #FFFFFF; font-family: 'Courier New', monospace; }
@@ -77,14 +76,9 @@ st.markdown("""
 
     .stButton>button {
         background-color: #111 !important; color: #FFFFFF !important;
-        border: 3px solid #00FF41 !important; height: 4rem; font-weight: bold !important;
+        border: 3px solid #00FF41 !important; height: 3.5rem; font-weight: bold !important;
     }
     .stButton>button:hover { background-color: #00FF41 !important; color: #000 !important; }
-
-    .info-card {
-        border: 1px solid #00FF41; border-left: 10px solid #00FF41;
-        padding: 15px; background: #111; border-radius: 0 15px 15px 0; margin-bottom: 10px;
-    }
 
     label, p, span, div { color: #FFFFFF !important; font-size: 1.3rem !important; }
     label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.4rem !important; }
@@ -94,7 +88,7 @@ st.markdown("""
         border: 2px solid #00FF41 !important; font-size: 1.3rem !important;
     }
 
-    /* FIX: SCHWARZER TEXT AUF GRÜNEM GRUND (Identify Agent) */
+    /* FIX: SCHWARZER TEXT AUF GRÜNEM GRUND FÜR SELECTBOX */
     div[data-baseweb="select"] > div { background-color: #00FF41 !important; border: 2px solid #00FF41 !important; }
     div[data-baseweb="select"] span { color: #000000 !important; font-weight: bold !important; }
     div[data-baseweb="select"] svg { fill: #000000 !important; }
@@ -106,8 +100,7 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #000 !important; }
     
-    /* Prompt Box Styling */
-    .prompt-box { background-color: #111; border: 1px dashed #00FF41; padding: 15px; font-size: 1.1rem !important; margin-bottom: 20px; }
+    .prompt-box { border: 1px dashed #00FF41; padding: 15px; background: #111; margin-bottom: 20px; font-size: 1.1rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -124,7 +117,7 @@ else:
     if st_autorefresh:
         st_autorefresh(interval=1000, key="timer_tick")
 
-    st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // STATUS: SECURE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // SECURE ACCESS</div>', unsafe_allow_html=True)
 
     # --- SIDEBAR ---
     with st.sidebar:
@@ -150,24 +143,23 @@ else:
         if st.button("SYNC SYSTEM"): force_reload()
 
     # --- MAIN TERMINAL TABS ---
-    t1, t2, t3 = st.tabs(["👤 PERSONNEL (Task 1)", "📂 SABOTAGE (Task 2)", "💰 CREDITS (Task 3)"])
+    t1, t2, t3 = st.tabs(["👤 PERSONNEL", "📂 SABOTAGE", "💰 CREDITS"])
 
-    # TAB 1: PERSONNEL
+    # TAB 1: PERSONNEL (Aufgabe 1)
     with t1:
-        st.header("Aufgabe 1: GAIA Agenten-Profil")
-        st.markdown("""<div class="prompt-box"><b>Master-Prompt für GAIA:</b><br>
-        "Ich nehme heute an einem Team-Workshop zum Thema KI im Projektmanagement teil. Erstelle mir eine professionelle Agenten-Identität für diesen Tag. Meine Stärken: [X], Meine Schwächen: [Y]. Generiere: Einen Agentennamen, eine Mission, meine Sichtweise und drei Leitfragen."</div>""", unsafe_allow_html=True)
+        st.header("Task 1: Agenten-Identität (Warmup)")
+        st.markdown('<div class="prompt-box"><b>GAIA Master-Prompt:</b> "Ich nehme heute an einem Team-Workshop zum Thema KI im Projektmanagement teil. Erstelle mir eine professionelle Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Einen Agentennamen, meine Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
         
         top_c1, top_c2 = st.columns([0.7, 0.3])
-        with top_c1: st.subheader("Deine Identität im Netzwerk hinterlegen:")
+        with top_c1: st.subheader("Neue Identität registrieren:")
         with top_c2: save_p = st.button("COMMIT TO DATABASE", use_container_width=True)
 
-        input_c1, input_c2 = st.columns(2)
-        with input_c1:
+        c1, c2 = st.columns(2)
+        with c1:
             a_name = st.selectbox("Identify Real Agent:", AGENT_LIST)
             c_name = st.text_input("Agentenname (von GAIA):")
-        with input_c2:
-            a_skill = st.text_input("Deine Sichtweise (z.B. Risiko-Detektor):")
+        with c2:
+            a_skill = st.text_input("Perspektive (z.B. Ethik-Anwalt):")
             a_ques = st.text_area("Deine 3 Leitfragen:")
 
         if save_p and c_name:
@@ -175,7 +167,7 @@ else:
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
             updated_p = pd.concat([df_p[df_p["Agent"] != a_name], new_p], ignore_index=True)
             conn.update(worksheet="Profiles", data=updated_p)
-            st.success("DATA COMMITTED: ENCRYPTION SUCCESSFUL")
+            st.success("AGENT SECURED IN DATABASE")
             force_reload()
 
         st.markdown("---")
@@ -183,31 +175,29 @@ else:
         p_list = get_cached_data("Profiles")
         if not p_list.empty:
             for idx, r in p_list.iterrows():
-                # AUSKLAPP-MENÜ LOGIK
-                exp_col, del_col = st.columns([0.9, 0.1])
-                with exp_col:
-                    with st.expander(f"👤 {r['Agent']} // Code: {r['Codename']}"):
+                # Sinnvolle Auflistung per Expander
+                with st.expander(f"👤 {r['Agent']} // Code: {r['Codename']}"):
+                    col_info, col_del = st.columns([0.9, 0.1])
+                    with col_info:
                         st.write(f"**Sichtweise:** {r['Skill']}")
-                        st.write(f"**Leitfragen:**")
-                        st.write(r['Questions'])
-                with del_col:
-                    st.write("") # Spacer
-                    if st.button("🗑️", key=f"del_p_{idx}"):
-                        conn.update(worksheet="Profiles", data=p_list[p_list["Agent"] != r["Agent"]])
-                        force_reload()
+                        st.write(f"**Leitfragen:** {r['Questions']}")
+                    with col_del:
+                        if st.button("🗑️", key=f"del_p_{idx}"):
+                            conn.update(worksheet="Profiles", data=p_list[p_list["Agent"] != r["Agent"]])
+                            force_reload()
 
-    # TAB 2: SABOTAGE
+    # TAB 2: SABOTAGE (Aufgabe 2)
     with t2:
-        top_col1_s, top_col2_s = st.columns([0.7, 0.3])
-        with top_col1_s:
-            st.header("Aufgabe 2: Sabotage-Akte")
-            st.write("Identifiziere 'Doku-Dämonen' oder 'Info-Silo-Fallen'.")
-        with top_col2_s:
+        top_c1s, top_c2s = st.columns([0.7, 0.3])
+        with top_c1s: 
+            st.header("Task 2: Die Sabotage-Akte")
+            st.write("Identifiziere 'Saboteure' wie Doku-Dämonen oder Reporting-Monster.")
+        with top_c2s: 
             st.write(" ")
             save_s = st.button("SUBMIT REPORT", use_container_width=True)
 
-        s_thema = st.text_input("Name des Saboteurs:")
-        s_details = st.text_area("Wie sabotiert er deine tägliche Arbeit?", height=100)
+        s_thema = st.text_input("Name des Saboteurs (z.B. Termin-Terror):")
+        s_details = st.text_area("Wie sabotiert er deine Arbeit?")
 
         if save_s and s_thema:
             df_s = get_cached_data("Sabotage")
@@ -220,33 +210,31 @@ else:
         st.markdown("---")
         s_list = get_cached_data("Sabotage")
         for idx, r in s_list.iterrows():
-            c1, c2 = st.columns([0.9, 0.1])
-            with c1:
-                with st.expander(f"🔴 ALERT: {r['Thema']}"):
-                    st.write(f"DETAILS: {r['Details']}")
-            with c2:
-                if st.button("🗑️", key=f"del_s_{idx}"):
-                    conn.update(worksheet="Sabotage", data=s_list[s_list["Thema"] != r["Thema"]])
-                    force_reload()
+            with st.expander(f"🔴 ALERT: {r['Thema']}"):
+                col_s, col_sd = st.columns([0.9, 0.1])
+                with col_s: st.write(f"DETAILS: {r['Details']}")
+                with col_sd:
+                    if st.button("🗑️", key=f"del_s_{idx}"):
+                        conn.update(worksheet="Sabotage", data=s_list[s_list["Thema"] != r["Thema"]])
+                        force_reload()
 
-    # TAB 3: CREDITS
+    # TAB 3: CREDITS (Aufgabe 3)
     with t3:
-        st.header("Aufgabe 3: 100 Credit Investment")
+        st.header("Task 3: Credit Investment")
         df_coins = get_cached_data("Sabotage")
-        
         if df_coins.empty:
-            st.info("Awaiting Sabotage Reports to allocate credits...")
+            st.info("Warten auf Sabotage-Berichte für das Investment...")
         else:
             voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
             spent = 0
             investments = {}
             for item in df_coins["Thema"].unique():
-                val = st.slider(f"ALLOCATE: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
+                val = st.slider(f"Investment für {item}:", 0, 100, 0, key=f"c_{voter}_{item}")
                 investments[item] = val
                 spent += val
             
             c_status = "#00FF41" if spent == 100 else "#FF4B4B"
-            st.markdown(f"### Total Allocation: <span style='color:{c_status};'>{spent} / 100</span>", unsafe_allow_html=True)
+            st.markdown(f"### Gesamt: <span style='color:{c_status};'>{spent} / 100 Credits</span>", unsafe_allow_html=True)
             
             if spent == 100:
                 if st.button("FINALIZE TRANSACTION"):
@@ -258,6 +246,6 @@ else:
                     st.balloons()
                     st.success("TRANSACTION SECURED")
             elif spent > 100:
-                st.error(f"Budget Exceeded! Remove {spent - 100} credits.")
+                st.error(f"Budget überschritten! Entferne {spent - 100} Credits.")
             else:
-                st.warning(f"Allocate {100 - spent} more credits to finalize.")
+                st.warning(f"Verteile noch {100 - spent} Credits.")
