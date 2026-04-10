@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
-import os # Wichtig für die Dateipfad-Prüfung
+import os
 
 # --- 1. PLUGINS & CONFIG ---
 try:
@@ -22,7 +22,6 @@ def get_cached_data(ws_name):
         df = conn.read(worksheet=ws_name, ttl=0)
         if df is None: df = pd.DataFrame()
         
-        # Sicherstellen, dass alle nötigen Spalten existieren
         if ws_name == "Profiles":
             for col in ["Agent", "Codename", "Skill", "Questions"]:
                 if col not in df.columns: df[col] = ""
@@ -48,7 +47,7 @@ def force_reload():
     st.cache_data.clear()
     st.rerun()
 
-# --- 3. MISSION SETUP (AKTUALISIERTE AGENDA) ---
+# --- 3. MISSION SETUP ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
 MISSION_DATA = {
@@ -164,13 +163,8 @@ if not st.session_state.access_granted:
     # ICON (LOKAL): Groß und zentriert auf der Startseite
     _, col_img, _ = st.columns([1, 1.2, 1])
     with col_img:
-        # PRÜFUNG: Existiert die Datei im Ordner?
         if os.path.exists(ICON_FILENAME):
-            # Wenn JA, lade sie
             st.image(ICON_FILENAME, use_container_width=True)
-        else:
-            # Wenn NEIN, zeige eine klare Warnung anstelle des Bildes
-            st.error(f"⚠️ Bild '{ICON_FILENAME}' nicht im Ordner gefunden! Bitte legen Sie es in denselben Ordner wie die app.py")
             
     st.markdown("""
             <div class="splash-title" style="margin-top: 20px;">PCS<br>INTELLIGENCE</div>
@@ -191,16 +185,17 @@ else:
 
     st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // SECURE ACCESS</div>', unsafe_allow_html=True)
 
+    # --- NEU: ICON IM HAUPTFENSTER (Zentriert & Präsent) ---
+    _, col_main_logo, _ = st.columns([1, 1, 1]) # [1,1,1] macht es genau 33% der Bildschirmbreite groß
+    with col_main_logo:
+        if os.path.exists(ICON_FILENAME):
+            st.image(ICON_FILENAME, use_container_width=True)
+    
+    st.write("") # Etwas Luft zum Atmen vor den Tabs
+    # --------------------------------------------------------
+
     # -- SIDEBAR --
     with st.sidebar:
-        # ICON (LOKAL): Klein, oben links in der Sidebar platziert
-        if os.path.exists(ICON_FILENAME):
-            st.image(ICON_FILENAME, width=120)  
-        else:
-            st.error(f"⚠️ '{ICON_FILENAME}' fehlt!")
-            
-        st.write("") 
-
         st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         elapsed = time.time() - st.session_state.mission_start_time
