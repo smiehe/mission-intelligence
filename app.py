@@ -16,10 +16,12 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=5)
 def get_cached_data(ws_name):
+    """Lädt Daten aus GSheets und sichert die Tabellenstruktur, um Abstürze zu vermeiden."""
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
         if df is None: df = pd.DataFrame()
         
+        # Sicherstellen, dass alle nötigen Spalten existieren
         if ws_name == "Profiles":
             for col in ["Agent", "Codename", "Skill", "Questions"]:
                 if col not in df.columns: df[col] = ""
@@ -35,6 +37,7 @@ def get_cached_data(ws_name):
                 
         return df.dropna(how="all")
     except Exception:
+        # Fallback-Gerüst bei Verbindungsfehlern
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill", "Questions"])
         if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
         if ws_name == "Votes": return pd.DataFrame(columns=["Voter", "Total"])
@@ -42,12 +45,14 @@ def get_cached_data(ws_name):
         return pd.DataFrame()
 
 def force_reload():
+    """Erzwingt ein Neuladen der Cloud-Daten."""
     st.cache_data.clear()
     st.rerun()
 
-# --- 3. MISSION SETUP ---
+# --- 3. MISSION SETUP (AKTUALISIERTE AGENDA) ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
+# Aktualisierte Tagesagenda
 MISSION_DATA = {
     "09:00": {"name": "Mission Warmup", "duration": 30},
     "09:30": {"name": "The intelligence Briefing with Nico", "duration": 90},
@@ -65,22 +70,25 @@ if 'mission_start_time' not in st.session_state: st.session_state.mission_start_
 # --- 4. PREMIUM TACTICAL CSS ---
 st.markdown("""
 <style>
+    /* Basis Layout */
     .stApp { background-color: #030303; color: #FFFFFF; font-family: 'Courier New', Courier, monospace; }
     
+    /* PREMIUM STARTBILDSCHIRM */
     .splash-box {
-        text-align: center; margin-top: 5vh; padding: 40px 40px;
+        text-align: center; margin-top: 8vh; padding: 60px 40px;
         border: 2px solid #00FF41; background-color: #080808;
         box-shadow: 0 0 40px rgba(0, 255, 65, 0.15), inset 0 0 20px rgba(0, 255, 65, 0.05); 
-        border-radius: 16px; max-width: 900px; margin-left: auto; margin-right: auto;
+        border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
     }
     .splash-title {
-        font-size: 4.5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
+        font-size: 5.5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
         text-shadow: 0 0 20px rgba(0, 255, 65, 0.4); margin-bottom: 20px; line-height: 1.1;
     }
     .splash-subtitle {
-        font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 30px; margin-top: 20px; text-transform: uppercase;
+        font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 40px; text-transform: uppercase;
     }
 
+    /* Sidebar & Timer */
     [data-testid="stSidebar"] { background-color: #080808; border-right: 2px solid #00FF41; }
     [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 1.1rem !important; }
     .timer-display {
@@ -89,6 +97,7 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(0, 255, 65, 0.15); margin-bottom: 25px; font-weight: bold;
     }
 
+    /* Header Panel */
     .mission-header {
         width: 100%; background-color: #00FF41; color: #000; padding: 12px 20px; font-weight: 900; 
         font-size: 1.4rem; letter-spacing: 4px; margin-top: -65px; 
@@ -96,6 +105,7 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,255,65,0.2);
     }
 
+    /* PREMIUM BUTTONS */
     .stButton>button {
         background-color: #080808 !important; color: #00FF41 !important;
         border: 2px solid #00FF41 !important; height: 3.8rem; font-weight: bold !important;
@@ -108,6 +118,7 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
+    /* Textfelder & Typografie */
     label, p, span, div { color: #E0E0E0 !important; font-size: 1.2rem !important; }
     label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; margin-bottom: 8px; }
     
@@ -116,14 +127,26 @@ st.markdown("""
         border: 1px solid #00FF41 !important; border-radius: 6px !important;
         font-size: 1.2rem !important; padding: 10px !important;
     }
+    input:focus, textarea:focus {
+        box-shadow: 0 0 10px rgba(0,255,65,0.3) !important;
+        outline: none !important;
+    }
 
+    /* --- DROPDOWN MENÜ FIX (Deaktivierte Texteingabe) --- */
     div[data-baseweb="select"] > div {
         background-color: #00FF41 !important; border: none !important; border-radius: 6px !important;
         cursor: pointer !important;
     }
-    div[data-baseweb="select"] input { caret-color: transparent !important; pointer-events: none !important; }
+    
+    /* Verhindert das Eintippen von freiem Text */
+    div[data-baseweb="select"] input {
+        caret-color: transparent !important; 
+        pointer-events: none !important; 
+    }
+    
     div[data-baseweb="select"] span { color: #000000 !important; font-weight: 900 !important; }
     div[data-baseweb="select"] svg { fill: #000000 !important; }
+    
     div[data-baseweb="popover"], ul[role="listbox"] {
         background-color: #080808 !important; border: 1px solid #00FF41 !important; border-radius: 6px !important;
     }
@@ -134,7 +157,9 @@ st.markdown("""
     li[role="option"]:hover, li[role="option"][aria-selected="true"] {
         background-color: #00FF41 !important; color: #000000 !important;
     }
+    /* ------------------------- */
 
+    /* Tabs & Boxen */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
         color: #00FF41 !important; border: 1px solid #00FF41 !important; border-bottom: none !important;
@@ -143,51 +168,46 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #000 !important; font-weight: bold !important; }
     
-    .prompt-box { border: 1px dashed #00FF41; padding: 20px; background: #0A0A0A; margin-bottom: 25px; border-radius: 8px; border-left: 5px solid #00FF41; }
-    [data-testid="stExpander"] { border: 1px solid #00FF41 !important; border-radius: 8px !important; background: #080808 !important; margin-bottom: 15px; }
+    .prompt-box { 
+        border: 1px dashed #00FF41; padding: 20px; background: #0A0A0A; 
+        margin-bottom: 25px; font-size: 1.1rem !important; border-radius: 8px;
+        border-left: 5px solid #00FF41;
+    }
+    
+    /* Expander Design */
+    [data-testid="stExpander"] {
+        border: 1px solid #00FF41 !important; border-radius: 8px !important; background: #080808 !important; margin-bottom: 15px;
+    }
     [data-testid="stExpander"] summary p { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 5. APP INTERFACE ---
 if not st.session_state.access_granted:
-    # STARTBILDSCHIRM MIT LOKALEM TEAM-FOTO
-    st.markdown('<div class="splash-box">', unsafe_allow_html=True)
-    st.markdown('<div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 10px;">/// SYSTEM LOCKED ///</div>', unsafe_allow_html=True)
-    st.markdown('<div class="splash-title">PCS<br>INTELLIGENCE</div>', unsafe_allow_html=True)
-    
-    # KUGELSICHERER WEG: Das Bild direkt aus dem Ordner laden!
-    try:
-        st.image("team.png", use_container_width=True)
-    except FileNotFoundError:
-        st.warning("⚠️ Bild 'team.png' nicht gefunden. Bitte lege es in denselben Ordner wie diese App!")
-
-    st.markdown('<div class="splash-subtitle">Network Authorization Required &nbsp;&bull;&nbsp; Q1 2026</div>', unsafe_allow_html=True)
-    
+    # STARTBILDSCHIRM
+    st.markdown("""
+        <div class="splash-box">
+            <div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 15px;">/// SYSTEM LOCKED ///</div>
+            <div class="splash-title">PCS<br>INTELLIGENCE</div>
+            <div class="splash-subtitle">Network Authorization Required &nbsp;&bull;&nbsp; Q1 2026</div>
+        </div>
+    """, unsafe_allow_html=True)
     _, col_mid, _ = st.columns([1,1,1])
     with col_mid:
+        st.write("") # Spacer
         if st.button("INITIATE UPLINK", use_container_width=True):
             st.session_state.access_granted = True
             st.session_state.mission_start_time = time.time()
             st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
 else:
+    # HAUPTMENÜ & TIMER
     if st_autorefresh:
         st_autorefresh(interval=1000, key="timer_tick")
 
     st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // SECURE ACCESS</div>', unsafe_allow_html=True)
 
-    # -- SIDEBAR MIT LOKALEM WAPPEN --
+    # -- SIDEBAR --
     with st.sidebar:
-        # KUGELSICHERER WEG: Das Wappen direkt aus dem Ordner laden!
-        try:
-            st.image("icon.png", use_container_width=True)
-        except FileNotFoundError:
-            st.warning("⚠️ Bild 'icon.png' fehlt im Ordner!")
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        
         st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         elapsed = time.time() - st.session_state.mission_start_time
