@@ -17,7 +17,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=5)
 def get_cached_data(ws_name):
-    """Lädt Daten aus GSheets und sichert die Tabellenstruktur."""
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
         if df is None: df = pd.DataFrame()
@@ -60,59 +59,126 @@ MISSION_DATA = {
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
-# --- BILD-KONFIGURATION (LOKAL) ---
 ICON_FILENAME = "icon.png"
 
 if 'access_granted' not in st.session_state: st.session_state.access_granted = False
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- 4. PREMIUM TACTICAL CSS ---
+# --- 4. PREMIUM TACTICAL CSS (MIT NEUEN EFFEKTEN) ---
 st.markdown("""
 <style>
-    .stApp { background-color: #030303; color: #FFFFFF; font-family: 'Courier New', Courier, monospace; }
+    /* Basis Layout */
+    .stApp { background-color: #030303; color: #FFFFFF; font-family: 'Courier New', Courier, monospace; overflow-x: hidden; }
     
+    /* ANIMATIONEN */
+    @keyframes neon-pulse {
+        0% { box-shadow: 0 0 10px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.1); }
+        50% { box-shadow: 0 0 30px rgba(0,255,65,0.6), inset 0 0 20px rgba(0,255,65,0.3); }
+        100% { box-shadow: 0 0 10px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.1); }
+    }
+    
+    @keyframes glitch-anim {
+        0% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 2px); }
+        20% { clip-path: inset(80% 0 10% 0); transform: translate(2px, -2px); }
+        40% { clip-path: inset(30% 0 50% 0); transform: translate(-2px, 2px); }
+        60% { clip-path: inset(90% 0 5% 0); transform: translate(2px, -2px); }
+        80% { clip-path: inset(5% 0 80% 0); transform: translate(-2px, 2px); }
+        100% { clip-path: inset(40% 0 40% 0); transform: translate(0); }
+    }
+    
+    @keyframes typing { from { width: 0 } to { width: 100% } }
+    @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00FF41; } }
+
+    @keyframes scan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* STARTBILDSCHIRM & WAPPEN (Neon Pulse) */
     .splash-box {
         text-align: center; margin-top: 5vh; padding: 50px 30px;
         border: 2px solid #00FF41; background-color: #080808;
-        box-shadow: 0 0 40px rgba(0, 255, 65, 0.15), inset 0 0 20px rgba(0, 255, 65, 0.05); 
         border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
+        animation: neon-pulse 3s infinite alternate; /* GLOW EFFEKT */
     }
     .splash-title {
         font-size: 5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
         text-shadow: 0 0 20px rgba(0, 255, 65, 0.4); margin-bottom: 20px; line-height: 1.1;
     }
-    .splash-subtitle {
-        font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 40px; text-transform: uppercase;
-    }
+    .splash-subtitle { font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 40px; text-transform: uppercase; }
 
-    [data-testid="stSidebar"] { background-color: #080808; border-right: 2px solid #00FF41; }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 1.1rem !important; }
-    .timer-display {
-        font-family: 'Courier New', monospace; color: #00FF41; font-size: 3.8rem; text-align: center;
-        border: 2px solid #00FF41; border-radius: 12px; padding: 15px; background: #000;
-        box-shadow: 0 0 20px rgba(0, 255, 65, 0.15); margin-bottom: 25px; font-weight: bold;
-    }
+    /* Wappen Glow */
+    [data-testid="stImage"] { animation: neon-pulse 4s infinite alternate; border-radius: 12px; }
 
+    /* TYPEWRITER HEADER */
     .mission-header {
-        width: 100%; background-color: #00FF41; color: #000; padding: 12px 20px; font-weight: 900; 
-        font-size: 1.4rem; letter-spacing: 4px; margin-top: -65px; 
-        margin-bottom: 35px; border-radius: 0 0 12px 12px;
+        width: fit-content; max-width: 100%; background-color: #080808; color: #00FF41; 
+        padding: 12px 20px; font-weight: 900; font-size: 1.4rem; letter-spacing: 4px; 
+        margin-top: -65px; margin-bottom: 35px; border-radius: 0 0 12px 12px;
+        border: 1px solid #00FF41; border-top: none;
         box-shadow: 0 4px 15px rgba(0,255,65,0.2);
+        
+        /* Typewriter Settings */
+        overflow: hidden; white-space: nowrap; border-right: .15em solid #00FF41;
+        animation: typing 2.5s steps(40, end), blink-caret .75s step-end infinite;
     }
 
+    /* CSS RADAR ANIMATION (Lottie Alternative) */
+    .radar-container { display: flex; justify-content: center; margin: 20px 0; }
+    .radar {
+        width: 120px; height: 120px;
+        background: radial-gradient(center, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0) 70%);
+        border-radius: 50%; border: 2px solid #00FF41; position: relative; overflow: hidden;
+        box-shadow: 0 0 20px rgba(0,255,65,0.4);
+    }
+    .radar:before {
+        content: ' '; display: block; position: absolute;
+        width: 50%; height: 50%; top: 0; left: 0;
+        border-right: 2px solid #00FF41; border-bottom: 2px solid #00FF41;
+        border-bottom-right-radius: 100%;
+        background: linear-gradient(45deg, rgba(0,0,0,0) 0%, rgba(0,255,65,0.5) 100%);
+        transform-origin: 100% 100%; animation: scan 2s linear infinite;
+    }
+    .radar-grid {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background-image: 
+            linear-gradient(rgba(0, 255, 65, 0.3) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.3) 1px, transparent 1px);
+        background-size: 20px 20px; border-radius: 50%;
+    }
+
+    /* BUTTONS & GLITCH HOVER */
     .stButton>button {
         background-color: #080808 !important; color: #00FF41 !important;
         border: 2px solid #00FF41 !important; height: 3.8rem; font-weight: bold !important;
-        border-radius: 8px !important; transition: all 0.3s ease !important;
-        text-transform: uppercase; letter-spacing: 1px;
+        border-radius: 8px !important; transition: all 0.2s ease !important;
+        text-transform: uppercase; letter-spacing: 1px; position: relative;
     }
     .stButton>button:hover { 
         background-color: #00FF41 !important; color: #000 !important; 
-        box-shadow: 0 0 15px rgba(0,255,65,0.4) !important;
-        transform: translateY(-2px);
+        box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
+        /* Glitch Trigger */
+        animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
+    @keyframes glitch-skew {
+        0% { transform: skew(0deg); }
+        20% { transform: skew(-10deg); }
+        40% { transform: skew(10deg); }
+        60% { transform: skew(-5deg); }
+        80% { transform: skew(5deg); }
+        100% { transform: skew(0deg); }
     }
 
+    /* Timer Pulse */
+    .timer-display {
+        font-family: 'Courier New', monospace; color: #00FF41; font-size: 3.8rem; text-align: center;
+        border: 2px solid #00FF41; border-radius: 12px; padding: 15px; background: #000;
+        animation: neon-pulse 2s infinite alternate; /* GLOW EFFEKT */
+        margin-bottom: 25px; font-weight: bold;
+    }
+
+    /* Sidebar, Tabs & Inputs - Gleiches Design wie zuvor */
+    [data-testid="stSidebar"] { background-color: #080808; border-right: 2px solid #00FF41; }
+    [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 1.1rem !important; }
+    
     label, p, span, div { color: #E0E0E0 !important; font-size: 1.2rem !important; }
     label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; margin-bottom: 8px; }
     
@@ -121,23 +187,18 @@ st.markdown("""
         border: 1px solid #00FF41 !important; border-radius: 6px !important;
         font-size: 1.2rem !important; padding: 10px !important;
     }
-    input:focus, textarea:focus { box-shadow: 0 0 10px rgba(0,255,65,0.3) !important; outline: none !important; }
+    input:focus, textarea:focus { box-shadow: 0 0 15px rgba(0,255,65,0.5) !important; outline: none !important; }
 
-    div[data-baseweb="select"] > div {
-        background-color: #00FF41 !important; border: none !important; border-radius: 6px !important; cursor: pointer !important;
-    }
+    /* Dropdown Fix */
+    div[data-baseweb="select"] > div { background-color: #00FF41 !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; }
     div[data-baseweb="select"] input { caret-color: transparent !important; pointer-events: none !important; }
     div[data-baseweb="select"] span { color: #000000 !important; font-weight: 900 !important; }
     div[data-baseweb="select"] svg { fill: #000000 !important; }
-    div[data-baseweb="popover"], ul[role="listbox"] {
-        background-color: #080808 !important; border: 1px solid #00FF41 !important; border-radius: 6px !important;
-    }
-    li[role="option"] {
-        background-color: #080808 !important; color: #00FF41 !important; 
-        font-weight: bold !important; border-bottom: 1px solid #111; padding: 12px !important;
-    }
+    div[data-baseweb="popover"], ul[role="listbox"] { background-color: #080808 !important; border: 1px solid #00FF41 !important; border-radius: 6px !important; }
+    li[role="option"] { background-color: #080808 !important; color: #00FF41 !important; font-weight: bold !important; border-bottom: 1px solid #111; padding: 12px !important; }
     li[role="option"]:hover, li[role="option"][aria-selected="true"] { background-color: #00FF41 !important; color: #000000 !important; }
 
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
         color: #00FF41 !important; border: 1px solid #00FF41 !important; border-bottom: none !important;
@@ -160,7 +221,6 @@ if not st.session_state.access_granted:
             <div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 15px;">/// SYSTEM LOCKED ///</div>
     """, unsafe_allow_html=True)
     
-    # ICON (LOKAL): Groß und zentriert auf der Startseite
     _, col_img, _ = st.columns([1, 1.2, 1])
     with col_img:
         if os.path.exists(ICON_FILENAME):
@@ -183,21 +243,26 @@ else:
     if st_autorefresh:
         st_autorefresh(interval=1000, key="timer_tick")
 
-    st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // SECURE ACCESS</div>', unsafe_allow_html=True)
+    # TYPEWRITER EFFEKT HIER
+    st.markdown('<div class="mission-header">>> DECRYPTING: PCS MISSION CONTROL ...</div>', unsafe_allow_html=True)
 
     # -- SIDEBAR --
     with st.sidebar:
-        # --- NEU: WAPPEN ZENTRIERT IN DER SIDEBAR ---
-        # Wir dritteln die Sidebar, das Bild kommt in die Mitte (col_logo)
+        
+        # WAPPEN IN DER SIDEBAR
         _, col_logo, _ = st.columns([1, 1.5, 1]) 
         with col_logo:
             if os.path.exists(ICON_FILENAME):
                 st.image(ICON_FILENAME, use_container_width=True)
         
-        st.markdown("<br>", unsafe_allow_html=True) # Etwas Luft nach unten
-        # ---------------------------------------------
+        # NEU: LOTTIE-ALTERNATIVE (CSS RADAR)
+        st.markdown("""
+            <div class="radar-container">
+                <div class="radar"><div class="radar-grid"></div></div>
+            </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#00FF41; text-align:center;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         elapsed = time.time() - st.session_state.mission_start_time
         rem_sec = max(0, (active_info['duration'] * 60) - elapsed)
