@@ -31,6 +31,9 @@ def get_cached_data(ws_name):
         elif ws_name == "Votes":
             for col in ["Voter", "Total"]:
                 if col not in df.columns: df[col] = ""
+        elif ws_name == "Deep_Dive":
+            for col in ["Titel", "Diskussion"]:
+                if col not in df.columns: df[col] = ""
                 
         return df.dropna(how="all")
     except Exception:
@@ -38,6 +41,7 @@ def get_cached_data(ws_name):
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill", "Questions"])
         if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
         if ws_name == "Votes": return pd.DataFrame(columns=["Voter", "Total"])
+        if ws_name == "Deep_Dive": return pd.DataFrame(columns=["Titel", "Diskussion"])
         return pd.DataFrame()
 
 def force_reload():
@@ -128,7 +132,7 @@ st.markdown("""
         outline: none !important;
     }
 
-    /* --- DROPDOWN MENÜ FIX (Schick & Lesbar) --- */
+    /* --- DROPDOWN MENÜ FIX --- */
     div[data-baseweb="select"] > div {
         background-color: #00FF41 !important; border: none !important; border-radius: 6px !important;
     }
@@ -145,7 +149,6 @@ st.markdown("""
     li[role="option"]:hover, li[role="option"][aria-selected="true"] {
         background-color: #00FF41 !important; color: #000000 !important;
     }
-    /* ------------------------- */
 
     /* Tabs & Boxen */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
@@ -164,7 +167,7 @@ st.markdown("""
     
     /* Expander Design */
     [data-testid="stExpander"] {
-        border: 1px solid #00FF41 !important; border-radius: 8px !important; background: #080808 !important;
+        border: 1px solid #00FF41 !important; border-radius: 8px !important; background: #080808 !important; margin-bottom: 15px;
     }
     [data-testid="stExpander"] summary p { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; }
 </style>
@@ -217,10 +220,10 @@ else:
         st.markdown("---")
         if st.button("SYNC SYSTEM", use_container_width=True): force_reload()
 
-    # -- TABS --
-    t1, t2, t3 = st.tabs(["👤 PERSONNEL", "📂 SABOTAGE", "💰 CREDITS"])
+    # -- TABS (Aktualisiert auf 4 Tabs) --
+    t1, t2, t3, t4 = st.tabs(["👤 TEAM", "📂 SABOTAGE", "💰 RANKING", "🤿 DEEP DIVE"])
 
-    # TAB 1: PERSONNEL (Aufgabe 1)
+    # TAB 1: TEAM (Aufgabe 1)
     with t1:
         st.header("Task 1: Agenten-Identität")
         st.markdown('<div class="prompt-box"><b>GAIA Prompt:</b><br>"Ich nehme heute an einem Workshop zum Thema KI im PM teil. Erstelle mir eine Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Agentenname, Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
@@ -247,7 +250,7 @@ else:
             force_reload()
 
         st.markdown("---")
-        st.subheader("Aktive Personnel Datenbank")
+        st.subheader("Aktive Team Datenbank")
         p_list = get_cached_data("Profiles")
         if not p_list.empty:
             for idx, r in p_list.iterrows():
@@ -265,7 +268,7 @@ else:
         with top_c1s: st.header("Task 2: Die Sabotage-Akte")
         with top_c2s: save_s = st.button("SUBMIT REPORT", use_container_width=True)
 
-        s_thema = st.text_input("Name des Saboteurs:")
+        s_thema = st.text_input("Titel:")
         s_details = st.text_area("Details der Sabotage:")
 
         if save_s and s_thema:
@@ -286,9 +289,9 @@ else:
                     conn.update(worksheet="Sabotage", data=cleaned_s)
                     force_reload()
 
-    # TAB 3: CREDITS (Aufgabe 3)
+    # TAB 3: RANKING (Aufgabe 3)
     with t3:
-        st.header("Task 3: Credit Investment")
+        st.header("Task 3: Ranking")
         df_coins = get_cached_data("Sabotage")
         if df_coins.empty:
             st.info("Warten auf Sabotage-Berichte aus Task 2...")
@@ -313,3 +316,45 @@ else:
                     conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
                     st.balloons()
                     st.success("TRANSACTION SECURED")
+
+    # TAB 4: DEEP DIVE (Neues Feature)
+    with t4:
+        st.header("Live-Diskussion: Deep Dive")
+        st.write("Hier dokumentieren wir die Lösungsansätze zu den identifizierten Sabotage-Akten.")
+        st.markdown("---")
+        
+        df_sabotage_dd = get_cached_data("Sabotage")
+        df_deepdive = get_cached_data("Deep_Dive")
+        
+        if df_sabotage_dd.empty:
+            st.info("Keine aktiven Sabotage-Akten für einen Deep Dive verfügbar.")
+        else:
+            for idx, row in df_sabotage_dd.iterrows():
+                thema = row["Thema"]
+                details = row["Details"]
+                
+                # Prüfen, ob schon Notizen in der "Deep_Dive" Tabelle existieren
+                existing_notes = ""
+                if not df_deepdive.empty and thema in df_deepdive["Titel"].values:
+                    existing_notes = df_deepdive[df_deepdive["Titel"] == thema]["Diskussion"].iloc[0]
+                
+                with st.expander(f"🤿 AKTE: {thema}"):
+                    st.write(f"**Ursprüngliches Problem:** {details}")
+                    st.write("")
+                    
+                    # Einzigartiger Key für jedes Textfeld, befüllt mit bestehenden Daten
+                    diskussion_text = st.text_area("Diskussions-Protokoll (Live):", value=existing_notes, height=150, key=f"dd_text_{thema}")
+                    
+                    if st.button("💾 NOTIZEN SPEICHERN", key=f"dd_save_{thema}"):
+                        new_dd_row = pd.DataFrame([{"Titel": thema, "Diskussion": diskussion_text}])
+                        
+                        df_current_dd = get_cached_data("Deep_Dive")
+                        if not df_current_dd.empty:
+                            df_current_dd = df_current_dd[df_current_dd["Titel"] != thema]
+                            
+                        updated_dd = pd.concat([df_current_dd, new_dd_row], ignore_index=True)
+                        conn.update(worksheet="Deep_Dive", data=updated_dd)
+                        
+                        st.success(f"Notizen für '{thema}' erfolgreich im Archiv gesichert!")
+                        time.sleep(1) # Kurze Pause, damit der Nutzer die Erfolgsmeldung sieht
+                        force_reload()
