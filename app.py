@@ -131,8 +131,6 @@ st.markdown("""
     @keyframes typing { from { width: 0 } to { width: 100% } }
     @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00FF41; } }
     @keyframes scan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
-    /* NEU: Animation für das Cyber-Diagramm */
     @keyframes growBar { from { width: 0%; } }
 
     .splash-box {
@@ -148,7 +146,6 @@ st.markdown("""
 
     [data-testid="stImage"] { animation: neon-pulse 4s infinite alternate; border-radius: 12px; }
 
-    /* HEADER & RADAR CONTAINER */
     .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-top: -65px; margin-bottom: 35px; }
 
     .mission-header {
@@ -159,7 +156,6 @@ st.markdown("""
         animation: typing 2.5s steps(40, end), blink-caret .75s step-end infinite;
     }
 
-    /* CSS RADAR */
     .radar-wrapper { margin-top: 15px; margin-right: 20px; }
     .radar {
         width: 80px; height: 80px; background: radial-gradient(center, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0) 70%);
@@ -177,7 +173,6 @@ st.markdown("""
         background-size: 15px 15px; border-radius: 50%;
     }
 
-    /* BUTTONS */
     .stButton>button {
         background-color: #080808 !important; color: #00FF41 !important; border: 2px solid #00FF41 !important; 
         height: 3.8rem; font-weight: bold !important; border-radius: 8px !important; transition: all 0.2s ease !important;
@@ -187,17 +182,10 @@ st.markdown("""
         background-color: #00FF41 !important; color: #000 !important; box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
         animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
-    /* Deaktivierte Buttons stylen */
     .stButton>button:disabled {
         background-color: #111 !important; color: #444 !important; border-color: #333 !important; box-shadow: none !important; cursor: not-allowed;
     }
 
-    @keyframes glitch-skew {
-        0% { transform: skew(0deg); } 20% { transform: skew(-10deg); } 40% { transform: skew(10deg); } 
-        60% { transform: skew(-5deg); } 80% { transform: skew(5deg); } 100% { transform: skew(0deg); }
-    }
-
-    /* SIDEBAR */
     [data-testid="stSidebar"] { background-color: #080808; border-right: 2px solid #00FF41; }
     [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 0.95rem !important; }
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { font-size: 1.1rem !important; margin-bottom: 0px !important;}
@@ -311,7 +299,8 @@ else:
             st.toast("📡 Daten werden an den Mainframe gesendet...", icon="⏳")
             df_p = get_cached_data("Profiles")
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
-            if not df_p.empty: df_p = df_p[df_p["Agent"] != a_name] 
+            if not df_p.empty and "Agent" in df_p.columns: 
+                df_p = df_p[df_p["Agent"] != a_name] 
             updated_p = pd.concat([df_p, new_p], ignore_index=True)
             
             conn.update(worksheet="Profiles", data=updated_p)
@@ -323,7 +312,7 @@ else:
         st.markdown("---")
         st.subheader("Aktive Team Datenbank")
         p_list = get_cached_data("Profiles")
-        if not p_list.empty:
+        if not p_list.empty and "Agent" in p_list.columns:
             for idx, r in p_list.iterrows():
                 with st.expander(f"👤 {r['Agent']} // Code: {r.get('Codename', '')}"):
                     st.write(f"**Perspektive:** {r.get('Skill', '')}")
@@ -349,8 +338,12 @@ else:
             st.toast("📡 Bericht wird übermittelt...", icon="⏳")
             df_s = get_cached_data("Sabotage")
             new_s = pd.DataFrame([{"Thema": s_thema, "Details": s_details}])
-            updated_s = pd.concat([df_s, new_s], ignore_index=True).drop_duplicates(subset=["Thema"])
             
+            if not df_s.empty and "Thema" in df_s.columns:
+                updated_s = pd.concat([df_s, new_s], ignore_index=True).drop_duplicates(subset=["Thema"], keep="last")
+            else:
+                updated_s = new_s
+                
             conn.update(worksheet="Sabotage", data=updated_s)
             st.cache_data.clear()
             st.success("BREACH REGISTERED")
@@ -359,44 +352,45 @@ else:
 
         st.markdown("---")
         s_list = get_cached_data("Sabotage")
-        for idx, r in s_list.iterrows():
-            with st.expander(f"🔴 ALERT: {r['Thema']}"):
-                st.write(f"DETAILS: {r['Details']}")
-                if st.button("🗑️ AKTE SCHLIEẞEN", key=f"del_s_{r['Thema']}"):
-                    st.toast("🗑️ Archivierung läuft...", icon="⏳")
-                    cleaned_s = s_list[s_list["Thema"] != r["Thema"]]
-                    conn.update(worksheet="Sabotage", data=cleaned_s)
-                    st.cache_data.clear()
-                    time.sleep(0.5)
-                    st.rerun()
+        if not s_list.empty and "Thema" in s_list.columns:
+            for idx, r in s_list.iterrows():
+                if pd.notna(r.get('Thema')) and str(r.get('Thema')).strip() != "":
+                    with st.expander(f"🔴 ALERT: {r['Thema']}"):
+                        st.write(f"DETAILS: {r.get('Details', '')}")
+                        if st.button("🗑️ AKTE SCHLIEẞEN", key=f"del_s_{r['Thema']}"):
+                            st.toast("🗑️ Archivierung läuft...", icon="⏳")
+                            cleaned_s = s_list[s_list["Thema"] != r["Thema"]]
+                            conn.update(worksheet="Sabotage", data=cleaned_s)
+                            st.cache_data.clear()
+                            time.sleep(0.5)
+                            st.rerun()
 
-
-    # TAB 3: RANKING
+    # TAB 3: RANKING (KUGLSICHERE VERSION)
     with t3:
         st.header("Live-Ranking der Bedrohungen")
         df_v_live = get_cached_data("Votes")
         
-        # NEU: Wir prüfen, ob es überhaupt schon Spalten für Themen gibt (alles außer Voter/Total)
+        # Sicherstellen, dass wir Spalten haben (außer Voter und Total)
         vote_cols = [c for c in df_v_live.columns if c not in ["Voter", "Total"]]
         
         if df_v_live.empty or not vote_cols:
-            # Custom Info-Box, falls noch keine echten Abstimmungsdaten da sind
             st.markdown("""
             <div style="border: 1px dashed #FF4B4B; padding: 20px; background: rgba(255, 75, 75, 0.05); border-radius: 8px; border-left: 5px solid #FF4B4B; text-align: center; margin-bottom: 20px;">
                 <span style="color: #FF4B4B; font-weight: bold; font-family: 'Courier New', monospace;">[!] KEINE DATEN VORHANDEN. SYSTEM WARTET AUF COIN-TRANSAKTIONEN.</span>
             </div>
             """, unsafe_allow_html=True)
         else:
-            # 1. Daten aufbereiten (nur wenn wirklich Themen da sind!)
+            # ERZWINGE ZAHLEN-FORMAT (Das behebt den Crash!)
+            for col in vote_cols:
+                df_v_live[col] = pd.to_numeric(df_v_live[col], errors='coerce').fillna(0)
+                
             ranking_data = df_v_live[vote_cols].sum().reset_index()
             ranking_data.columns = ["Thema", "Coins"]
             ranking_data = ranking_data.sort_values(by="Coins", ascending=False)
             
-            # Höchstwert für die Prozentrechnung ermitteln (für die Balkenlänge)
             max_coins = ranking_data["Coins"].max()
-            if max_coins == 0: max_coins = 1 # Verhindert Division durch 0
+            if max_coins == 0: max_coins = 1 
             
-            # 2. Unser massgeschneidertes Cyber-Balkendiagramm generieren
             html_bars = "<div style='margin-bottom: 40px; padding: 20px; border: 1px solid #111; background: #050505; border-radius: 12px; box-shadow: inset 0 0 20px rgba(0,255,65,0.05);'>"
             
             for idx, row in ranking_data.iterrows():
@@ -404,7 +398,6 @@ else:
                 coins = int(row["Coins"])
                 percentage = int((coins / max_coins) * 100)
                 
-                # Jeder Balken bekommt einen Text und eine animierte Leiste
                 html_bars += f"""
                 <div style="margin-bottom: 20px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -423,13 +416,17 @@ else:
         st.subheader("Task 3: Coins investieren")
         df_coins = get_cached_data("Sabotage")
         
-        if df_coins.empty:
+        if df_coins.empty or "Thema" not in df_coins.columns:
             st.warning("Warten auf Sabotage-Berichte aus Task 2...")
         else:
             voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
             spent = 0
             investments = {}
-            for item in df_coins["Thema"].unique():
+            
+            # Hole alle einzigartigen Themen, die nicht leer sind
+            valid_themes = [t for t in df_coins["Thema"].unique() if pd.notna(t) and str(t).strip() != ""]
+            
+            for item in valid_themes:
                 val = st.slider(f"Investment: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
                 investments[item] = val
                 spent += val
@@ -437,13 +434,14 @@ else:
             c_status = "#00FF41" if spent == 100 else "#FF4B4B"
             st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
             
-            # Der Button ist IMMER sichtbar, aber ausgegraut, wenn man nicht bei exakt 100 Coins ist
             if st.button("FINALIZE TRANSACTION", use_container_width=True, disabled=(spent != 100)):
                 st.toast("💰 Transaktion wird validiert...", icon="⏳")
                 vote_row = {"Voter": voter, "Total": 100}
                 vote_row.update(investments)
+                
                 df_v = get_cached_data("Votes")
-                if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
+                if not df_v.empty and "Voter" in df_v.columns: 
+                    df_v = df_v[df_v["Voter"] != voter]
                 
                 conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
                 st.cache_data.clear()
@@ -461,15 +459,16 @@ else:
         df_sabotage_dd = get_cached_data("Sabotage")
         df_deepdive = get_cached_data("Deep_Dive")
         
-        if df_sabotage_dd.empty:
+        if df_sabotage_dd.empty or "Thema" not in df_sabotage_dd.columns:
             st.info("Keine aktiven Sabotage-Akten für einen Deep Dive verfügbar.")
         else:
-            for idx, row in df_sabotage_dd.iterrows():
-                thema = row["Thema"]
-                details = row["Details"]
+            valid_dd_themes = [t for t in df_sabotage_dd["Thema"].unique() if pd.notna(t) and str(t).strip() != ""]
+            for thema in valid_dd_themes:
+                details_row = df_sabotage_dd[df_sabotage_dd["Thema"] == thema]
+                details = details_row["Details"].iloc[0] if not details_row.empty else ""
                 
                 existing_notes = ""
-                if not df_deepdive.empty and thema in df_deepdive["Titel"].values:
+                if not df_deepdive.empty and "Titel" in df_deepdive.columns and thema in df_deepdive["Titel"].values:
                     existing_notes = df_deepdive[df_deepdive["Titel"] == thema]["Diskussion"].iloc[0]
                 
                 with st.expander(f"🤿 AKTE: {thema}"):
@@ -482,9 +481,10 @@ else:
                         st.toast("💾 Sichere Protokoll...", icon="⏳")
                         new_dd_row = pd.DataFrame([{"Titel": thema, "Diskussion": diskussion_text}])
                         
-                        df_current_dd = get_cached_data("Deep_Dive")
-                        if not df_current_dd.empty:
-                            df_current_dd = df_current_dd[df_current_dd["Titel"] != thema]
+                        if not df_deepdive.empty and "Titel" in df_deepdive.columns:
+                            df_current_dd = df_deepdive[df_deepdive["Titel"] != thema]
+                        else:
+                            df_current_dd = pd.DataFrame(columns=["Titel", "Diskussion"])
                             
                         updated_dd = pd.concat([df_current_dd, new_dd_row], ignore_index=True)
                         conn.update(worksheet="Deep_Dive", data=updated_dd)
