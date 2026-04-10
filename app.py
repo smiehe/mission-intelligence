@@ -365,90 +365,62 @@ else:
                     time.sleep(0.5)
                     st.rerun()
 
-  # TAB 3: RANKING (FIXED CYBER-DESIGN)
+  # TAB 3: RANKING (STABLE TERMINAL MODE)
     with t3:
-        st.header("Live-Ranking der Bedrohungen")
-        df_v_live = get_cached_data("Votes")
+        st.header("Task 3: Ressourcen-Allokation")
+        st.write("Verteilen Sie Ihr Budget von 100 Coins auf die identifizierten Sabotage-Risiken.")
         
-        vote_cols = [c for c in df_v_live.columns if c not in ["Voter", "Total"]]
-        
-        if df_v_live.empty or not vote_cols:
-            st.markdown("""
-            <div style="border: 1px dashed #FF4B4B; padding: 20px; background: rgba(255, 75, 75, 0.05); border-radius: 8px; border-left: 5px solid #FF4B4B; text-align: center; margin-bottom: 20px;">
-                <span style="color: #FF4B4B; font-weight: bold; font-family: 'Courier New', monospace;">[!] KEINE DATEN VORHANDEN. SYSTEM WARTET AUF COIN-TRANSAKTIONEN.</span>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            # Daten-Vorbereitung
-            for col in vote_cols:
-                df_v_live[col] = pd.to_numeric(df_v_live[col], errors='coerce').fillna(0)
-                
-            ranking_data = df_v_live[vote_cols].sum().reset_index()
-            ranking_data.columns = ["Thema", "Coins"]
-            ranking_data = ranking_data.sort_values(by="Coins", ascending=False)
-            
-            max_coins = ranking_data["Coins"].max()
-            if max_coins == 0: max_coins = 1 
-            
-            # HTML GENERIERUNG (Ohne f-String innerhalb der Schleife für maximale Stabilität)
-            html_content = '<div style="background-color: #000000; padding: 25px; border: 1px solid #111; border-radius: 12px; box-shadow: inset 0 0 20px rgba(0,242,255,0.05);">'
-            
-            for _, row in ranking_data.iterrows():
-                thema = str(row["Thema"]).upper()
-                coins = int(row["Coins"])
-                percentage = int((coins / max_coins) * 100)
-                
-                html_content += f'''
-                <div style="margin-bottom: 25px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                        <span style="color: #FFFFFF; font-weight: bold; font-family: 'Courier New', monospace; letter-spacing: 1px;">> {thema}</span>
-                        <span style="color: #00f2ff; font-weight: bold; font-family: 'Courier New', monospace; text-shadow: 0 0 10px rgba(0,242,255,0.5);">{coins} COINS</span>
-                    </div>
-                    <div style="width: 100%; background-color: #0a0a0a; border: 1px solid #222; border-radius: 5px; height: 30px; overflow: hidden;">
-                        <div style="width: {percentage}%; background: linear-gradient(90deg, #008080 0%, #00f2ff 100%); height: 100%; box-shadow: 0 0 15px rgba(0,242,255,0.4); animation: growBar 1.5s ease-out forwards;"></div>
-                    </div>
-                </div>
-                '''
-            html_content += '</div>'
-            
-            # WICHTIG: Das hier rendert das HTML
-            st.markdown(html_content, unsafe_allow_html=True)
-            
         st.markdown("---")
-        st.subheader("Task 3: Coins investieren")
+        
+        # Daten abrufen
         df_coins = get_cached_data("Sabotage")
         
         if df_coins.empty:
-            st.warning("Warten auf Sabotage-Berichte aus Task 2...")
+            st.warning("📡 Warten auf Sabotage-Berichte aus Task 2... Terminal im Standby.")
         else:
-            voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
+            # Voting Formular
+            voter = st.selectbox("Identify Authorization Officer:", AGENT_LIST, key="v_sel")
             spent = 0
             investments = {}
             
+            # Nur gültige Themen anzeigen
             valid_themes = [t for t in df_coins["Thema"].unique() if pd.notna(t) and str(t).strip() != ""]
             
-            for item in valid_themes:
-                val = st.slider(f"Investment: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
-                investments[item] = val
-                spent += val
-            
-            # Farbe des Status-Textes passend zum Türkis
-            c_status = "#00f2ff" if spent == 100 else "#FF4B4B"
-            st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
-            
-            if st.button("FINALIZE TRANSACTION", use_container_width=True, disabled=(spent != 100)):
-                st.toast("💰 Transaktion wird validiert...", icon="⏳")
-                vote_row = {"Voter": voter, "Total": 100}
-                vote_row.update(investments)
-                df_v = get_cached_data("Votes")
-                if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
+            if not valid_themes:
+                st.info("Keine gültigen Themen zum Bewerten gefunden.")
+            else:
+                # Die Slider für die Coins
+                for item in valid_themes:
+                    val = st.slider(f"Investment: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
+                    investments[item] = val
+                    spent += val
                 
-                conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
-                st.cache_data.clear()
-                st.balloons()
-                st.success("TRANSACTION SECURED")
-                time.sleep(1.5)
-                st.rerun()
+                # Status-Anzeige
+                c_status = "#00FF41" if spent == 100 else "#FF4B4B"
+                st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
+                
+                # Finalisierung
+                if st.button("FINALIZE TRANSACTION", use_container_width=True, disabled=(spent != 100)):
+                    st.toast("💰 Transaktion wird validiert...", icon="⏳")
+                    
+                    # Zeile für die Datenbank vorbereiten
+                    vote_row = {"Voter": voter, "Total": 100}
+                    vote_row.update(investments)
+                    
+                    # Bestehende Votes laden und Dubletten des gleichen Voters entfernen
+                    df_v = get_cached_data("Votes")
+                    if not df_v.empty and "Voter" in df_v.columns: 
+                        df_v = df_v[df_v["Voter"] != voter]
+                    
+                    # Update an Google Sheets
+                    new_votes = pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True)
+                    conn.update(worksheet="Votes", data=new_votes)
+                    
+                    st.cache_data.clear()
+                    st.balloons()
+                    st.success("TRANSACTION SECURED - DATA SYNCED")
+                    time.sleep(1.5)
+                    st.rerun()
 
     # TAB 4: DEEP DIVE
     with t4:
