@@ -365,12 +365,11 @@ else:
                     time.sleep(0.5)
                     st.rerun()
 
-   # TAB 3: RANKING (UPGRADED DESIGN: DARK & TURQUOISE)
+  # TAB 3: RANKING (FIXED CYBER-DESIGN)
     with t3:
         st.header("Live-Ranking der Bedrohungen")
         df_v_live = get_cached_data("Votes")
         
-        # Sicherstellen, dass wir Spalten für die Themen haben (alles außer Voter und Total)
         vote_cols = [c for c in df_v_live.columns if c not in ["Voter", "Total"]]
         
         if df_v_live.empty or not vote_cols:
@@ -380,43 +379,40 @@ else:
             </div>
             """, unsafe_allow_html=True)
         else:
-            # 1. ERZWINGE ZAHLEN-FORMAT
+            # Daten-Vorbereitung
             for col in vote_cols:
                 df_v_live[col] = pd.to_numeric(df_v_live[col], errors='coerce').fillna(0)
                 
-            # 2. Daten summieren und sortieren
             ranking_data = df_v_live[vote_cols].sum().reset_index()
             ranking_data.columns = ["Thema", "Coins"]
             ranking_data = ranking_data.sort_values(by="Coins", ascending=False)
             
-            # Höchstwert für die Prozentrechnung
             max_coins = ranking_data["Coins"].max()
             if max_coins == 0: max_coins = 1 
             
-            # 3. HTML Cyber-Balkendiagramm (Dunkler Hintergrund & Türkis)
-            # Hintergrund auf #050505 (fast Schwarz) gesetzt
-            html_bars = "<div style='margin-bottom: 40px; padding: 20px; border: 1px solid #111; background: #000000; border-radius: 12px; box-shadow: inset 0 0 30px rgba(0,255,255,0.05);'>"
+            # HTML GENERIERUNG (Ohne f-String innerhalb der Schleife für maximale Stabilität)
+            html_content = '<div style="background-color: #000000; padding: 25px; border: 1px solid #111; border-radius: 12px; box-shadow: inset 0 0 20px rgba(0,242,255,0.05);">'
             
-            for idx, row in ranking_data.iterrows():
-                thema = row["Thema"]
+            for _, row in ranking_data.iterrows():
+                thema = str(row["Thema"]).upper()
                 coins = int(row["Coins"])
                 percentage = int((coins / max_coins) * 100)
                 
-                # Türkis-Farbton: #00CED1 (DarkTurquoise) oder #40E0D0 (Turquoise)
-                # Hier genutzt: Ein strahlendes Cyan-Türkis (#00f2ff)
-                html_bars += f"""
-                <div style="margin-bottom: 20px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: #FFF; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.1rem; text-transform: uppercase;">> {thema}</span>
-                        <span style="color: #00f2ff; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.2rem; text-shadow: 0 0 8px rgba(0,242,255,0.6);">{coins} COINS</span>
+                html_content += f'''
+                <div style="margin-bottom: 25px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="color: #FFFFFF; font-weight: bold; font-family: 'Courier New', monospace; letter-spacing: 1px;">> {thema}</span>
+                        <span style="color: #00f2ff; font-weight: bold; font-family: 'Courier New', monospace; text-shadow: 0 0 10px rgba(0,242,255,0.5);">{coins} COINS</span>
                     </div>
-                    <div style="width: 100%; background-color: #0a0a0a; border: 1px solid #222; border-radius: 4px; height: 32px; overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,1);">
-                        <div style="width: {percentage}%; background: linear-gradient(90deg, #008080 0%, #00f2ff 100%); height: 100%; border-radius: 2px; box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); animation: growBar 1.5s ease-out forwards;"></div>
+                    <div style="width: 100%; background-color: #0a0a0a; border: 1px solid #222; border-radius: 5px; height: 30px; overflow: hidden;">
+                        <div style="width: {percentage}%; background: linear-gradient(90deg, #008080 0%, #00f2ff 100%); height: 100%; box-shadow: 0 0 15px rgba(0,242,255,0.4); animation: growBar 1.5s ease-out forwards;"></div>
                     </div>
                 </div>
-                """
-            html_bars += "</div>"
-            st.markdown(html_bars, unsafe_allow_html=True)
+                '''
+            html_content += '</div>'
+            
+            # WICHTIG: Das hier rendert das HTML
+            st.markdown(html_content, unsafe_allow_html=True)
             
         st.markdown("---")
         st.subheader("Task 3: Coins investieren")
@@ -436,6 +432,7 @@ else:
                 investments[item] = val
                 spent += val
             
+            # Farbe des Status-Textes passend zum Türkis
             c_status = "#00f2ff" if spent == 100 else "#FF4B4B"
             st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
             
