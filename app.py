@@ -11,7 +11,6 @@ st.set_page_config(page_title="PCS Intelligence HQ", page_icon="🚀", layout="w
 # --- 2. DATA ENGINE (Google Sheets - HOCHLEISTUNGSMODUS) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# PERFORMANCE UPGRADE: Cache von 5 auf 30 Sekunden erhöht!
 @st.cache_data(ttl=30)
 def get_cached_data(ws_name):
     try:
@@ -62,8 +61,7 @@ if 'access_granted' not in st.session_state: st.session_state.access_granted = F
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- PERFORMANCE UPGRADE: JAVASCRIPT CHRONOMETER ---
-# Verhindert, dass die Python-App jede Sekunde neu laden muss!
+# --- JAVASCRIPT CHRONOMETER ---
 def render_js_timer(start_time, duration_min):
     html_code = f"""
     <style>
@@ -133,6 +131,9 @@ st.markdown("""
     @keyframes typing { from { width: 0 } to { width: 100% } }
     @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00FF41; } }
     @keyframes scan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    /* NEU: Animation für das Cyber-Diagramm */
+    @keyframes growBar { from { width: 0%; } }
 
     .splash-box {
         text-align: center; margin-top: 5vh; padding: 50px 30px;
@@ -186,6 +187,11 @@ st.markdown("""
         background-color: #00FF41 !important; color: #000 !important; box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
         animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
+    /* Deaktivierte Buttons stylen */
+    .stButton>button:disabled {
+        background-color: #111 !important; color: #444 !important; border-color: #333 !important; box-shadow: none !important; cursor: not-allowed;
+    }
+
     @keyframes glitch-skew {
         0% { transform: skew(0deg); } 20% { transform: skew(-10deg); } 40% { transform: skew(10deg); } 
         60% { transform: skew(-5deg); } 80% { transform: skew(5deg); } 100% { transform: skew(0deg); }
@@ -264,7 +270,6 @@ else:
         
         st.markdown("<h3 style='color:#00FF41; text-align:center;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         
-        # Aufruf des neuen, ressourcenschonenden JavaScript-Timers!
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         render_js_timer(st.session_state.mission_start_time, active_info['duration'])
         
@@ -303,7 +308,7 @@ else:
             a_ques = st.text_area("Deine 3 Leitfragen:")
 
         if save_p and c_name:
-            st.toast("📡 Daten werden an den Mainframe gesendet...", icon="⏳") # Feedback für den User
+            st.toast("📡 Daten werden an den Mainframe gesendet...", icon="⏳")
             df_p = get_cached_data("Profiles")
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
             if not df_p.empty: df_p = df_p[df_p["Agent"] != a_name] 
@@ -371,15 +376,49 @@ else:
         df_v_live = get_cached_data("Votes")
         
         if df_v_live.empty:
-            st.info("Es wurden noch keine Coins investiert. Das Ranking ist offline.")
+            # Custom Info-Box im Cyber-Design anstatt des blauen Standard-Banners
+            st.markdown("""
+            <div style="border: 1px dashed #FF4B4B; padding: 20px; background: rgba(255, 75, 75, 0.05); border-radius: 8px; border-left: 5px solid #FF4B4B; text-align: center; margin-bottom: 20px;">
+                <span style="color: #FF4B4B; font-weight: bold; font-family: 'Courier New', monospace;">[!] KEINE DATEN VORHANDEN. SYSTEM WARTET AUF COIN-TRANSAKTIONEN.</span>
+            </div>
+            """, unsafe_allow_html=True)
         else:
+            # 1. Daten aufbereiten und sortieren
             ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
-            ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
-            st.bar_chart(ranking_data.set_index("Sabotage-Thema"), use_container_width=True)
+            ranking_data.columns = ["Thema", "Coins"]
+            ranking_data = ranking_data.sort_values(by="Coins", ascending=False)
+            
+            # Höchstwert für die Prozentrechnung ermitteln (für die Balkenlänge)
+            max_coins = ranking_data["Coins"].max()
+            if max_coins == 0: max_coins = 1 # Verhindert Division durch 0
+            
+            # 2. Unser neues, massgeschneidertes Cyber-Balkendiagramm generieren
+            html_bars = "<div style='margin-bottom: 40px; padding: 20px; border: 1px solid #111; background: #050505; border-radius: 12px; box-shadow: inset 0 0 20px rgba(0,255,65,0.05);'>"
+            
+            for idx, row in ranking_data.iterrows():
+                thema = row["Thema"]
+                coins = int(row["Coins"])
+                percentage = int((coins / max_coins) * 100)
+                
+                # Jeder Balken bekommt einen Text und eine animierte Leiste
+                html_bars += f"""
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #FFF; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.1rem; text-transform: uppercase;">> {thema}</span>
+                        <span style="color: #00FF41; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.2rem; text-shadow: 0 0 5px rgba(0,255,65,0.5);">{coins} COINS</span>
+                    </div>
+                    <div style="width: 100%; background-color: #0a0a0a; border: 1px solid #222; border-radius: 4px; height: 28px; overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,1);">
+                        <div style="width: {percentage}%; background: linear-gradient(90deg, rgba(0,180,45,1) 0%, rgba(0,255,65,1) 100%); height: 100%; border-radius: 2px; box-shadow: 0 0 15px rgba(0, 255, 65, 0.8); animation: growBar 1.5s ease-out forwards;"></div>
+                    </div>
+                </div>
+                """
+            html_bars += "</div>"
+            st.markdown(html_bars, unsafe_allow_html=True)
             
         st.markdown("---")
         st.subheader("Task 3: Coins investieren")
         df_coins = get_cached_data("Sabotage")
+        
         if df_coins.empty:
             st.warning("Warten auf Sabotage-Berichte aus Task 2...")
         else:
@@ -394,20 +433,20 @@ else:
             c_status = "#00FF41" if spent == 100 else "#FF4B4B"
             st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
             
-            if spent == 100:
-                if st.button("FINALIZE TRANSACTION", use_container_width=True):
-                    st.toast("💰 Transaktion wird validiert...", icon="⏳")
-                    vote_row = {"Voter": voter, "Total": 100}
-                    vote_row.update(investments)
-                    df_v = get_cached_data("Votes")
-                    if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
-                    
-                    conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
-                    st.cache_data.clear()
-                    st.balloons()
-                    st.success("TRANSACTION SECURED")
-                    time.sleep(1.5)
-                    st.rerun()
+            # Der Button ist IMMER sichtbar, aber ausgegraut, wenn man nicht bei exakt 100 Coins ist
+            if st.button("FINALIZE TRANSACTION", use_container_width=True, disabled=(spent != 100)):
+                st.toast("💰 Transaktion wird validiert...", icon="⏳")
+                vote_row = {"Voter": voter, "Total": 100}
+                vote_row.update(investments)
+                df_v = get_cached_data("Votes")
+                if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
+                
+                conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
+                st.cache_data.clear()
+                st.balloons()
+                st.success("TRANSACTION SECURED")
+                time.sleep(1.5)
+                st.rerun()
 
     # TAB 4: DEEP DIVE
     with t4:
