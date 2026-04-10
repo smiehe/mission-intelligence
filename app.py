@@ -103,7 +103,7 @@ st.markdown("""
 
     [data-testid="stImage"] { animation: neon-pulse 4s infinite alternate; border-radius: 12px; }
 
-    /* HEADER & RADAR CONTAINER (Flexbox für Rechtsbündigkeit) */
+    /* HEADER & RADAR CONTAINER */
     .header-container {
         display: flex; justify-content: space-between; align-items: flex-start;
         margin-top: -65px; margin-bottom: 35px;
@@ -119,10 +119,10 @@ st.markdown("""
         animation: typing 2.5s steps(40, end), blink-caret .75s step-end infinite;
     }
 
-    /* CSS RADAR (Jetzt Rechts Oben) */
+    /* CSS RADAR */
     .radar-wrapper { margin-top: 15px; margin-right: 20px; }
     .radar {
-        width: 80px; height: 80px; /* Etwas kleiner gemacht für den Header */
+        width: 80px; height: 80px; 
         background: radial-gradient(center, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0) 70%);
         border-radius: 50%; border: 2px solid #00FF41; position: relative; overflow: hidden;
         box-shadow: 0 0 15px rgba(0,255,65,0.4);
@@ -168,13 +168,10 @@ st.markdown("""
         animation: neon-pulse 2s infinite alternate; margin-bottom: 25px; font-weight: bold;
     }
 
-    /* SIDEBAR (Kompakter) */
+    /* SIDEBAR */
     [data-testid="stSidebar"] { background-color: #080808; border-right: 2px solid #00FF41; }
-    /* Generelle Schrift in Sidebar kleiner */
     [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 0.95rem !important; }
-    /* Headers in Sidebar kleiner */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { font-size: 1.1rem !important; margin-bottom: 0px !important;}
-    /* Buttons in Sidebar kleiner */
     [data-testid="stSidebar"] .stButton>button { height: 2.5rem !important; font-size: 0.8rem !important; border-width: 1px !important; padding: 0.2rem !important; margin-bottom: 0px !important;}
     
     label, p, span, div { color: #E0E0E0 !important; font-size: 1.2rem !important; }
@@ -237,7 +234,6 @@ else:
     if st_autorefresh:
         st_autorefresh(interval=1000, key="timer_tick")
 
-    # --- HEADER & RADAR LAYOUT ---
     st.markdown("""
     <div class="header-container">
         <div class="mission-header">>> DECRYPTING: PCS MISSION CONTROL ...</div>
@@ -246,7 +242,6 @@ else:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    # -----------------------------
 
     # -- SIDEBAR --
     with st.sidebar:
@@ -263,7 +258,7 @@ else:
         t_color = "#00FF41" if rem_sec > 60 else "#FF0000"
         st.markdown(f'<div class="timer-display" style="color:{t_color}; border-color:{t_color};">{m:02d}:{s:02d}</div>', unsafe_allow_html=True)
         
-        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True) # Kompakterer Divider
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         st.markdown("<h3 style='color:#00FF41; text-align:center;'>MISSION LOG</h3>", unsafe_allow_html=True)
         
         for k, d in MISSION_DATA.items():
@@ -346,12 +341,29 @@ else:
                     conn.update(worksheet="Sabotage", data=cleaned_s)
                     force_reload()
 
-    # TAB 3: RANKING
+    # TAB 3: RANKING (NEU: LIVE-BAR-CHART)
     with t3:
-        st.header("Task 3: Ranking")
+        # 1. LIVE-RANKING VISUALISIERUNG
+        st.header("Live-Ranking der Bedrohungen")
+        df_v_live = get_cached_data("Votes")
+        
+        if df_v_live.empty:
+            st.info("Es wurden noch keine Coins investiert. Das Ranking ist offline.")
+        else:
+            # Berechne die Summe aller Spalten (außer Voter und Total)
+            ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
+            ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
+            
+            # Stelle die Daten als Balkendiagramm dar
+            st.bar_chart(ranking_data.set_index("Sabotage-Thema"), use_container_width=True)
+            
+        st.markdown("---")
+        
+        # 2. DAS VOTING-TERMINAL
+        st.subheader("Task 3: Coins investieren")
         df_coins = get_cached_data("Sabotage")
         if df_coins.empty:
-            st.info("Warten auf Sabotage-Berichte aus Task 2...")
+            st.warning("Warten auf Sabotage-Berichte aus Task 2...")
         else:
             voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
             spent = 0
@@ -362,7 +374,7 @@ else:
                 spent += val
             
             c_status = "#00FF41" if spent == 100 else "#FF4B4B"
-            st.markdown(f"### Gesamt: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100</span>", unsafe_allow_html=True)
+            st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
             
             if spent == 100:
                 if st.button("FINALIZE TRANSACTION", use_container_width=True):
@@ -373,6 +385,8 @@ else:
                     conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
                     st.balloons()
                     st.success("TRANSACTION SECURED")
+                    time.sleep(1.5)
+                    force_reload() # Lädt die Seite neu, damit das Chart sofort updated
 
     # TAB 4: DEEP DIVE
     with t4:
