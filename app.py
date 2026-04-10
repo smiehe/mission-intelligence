@@ -16,12 +16,11 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=5)
 def get_cached_data(ws_name):
-    """Lädt Daten aus GSheets und sichert die Tabellenstruktur, um Abstürze zu vermeiden."""
+    """Lädt Daten aus GSheets und sichert die Tabellenstruktur."""
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
         if df is None: df = pd.DataFrame()
         
-        # Sicherstellen, dass alle nötigen Spalten existieren
         if ws_name == "Profiles":
             for col in ["Agent", "Codename", "Skill", "Questions"]:
                 if col not in df.columns: df[col] = ""
@@ -37,7 +36,6 @@ def get_cached_data(ws_name):
                 
         return df.dropna(how="all")
     except Exception:
-        # Fallback-Gerüst bei Verbindungsfehlern
         if ws_name == "Profiles": return pd.DataFrame(columns=["Agent", "Codename", "Skill", "Questions"])
         if ws_name == "Sabotage": return pd.DataFrame(columns=["Thema", "Details"])
         if ws_name == "Votes": return pd.DataFrame(columns=["Voter", "Total"])
@@ -45,14 +43,12 @@ def get_cached_data(ws_name):
         return pd.DataFrame()
 
 def force_reload():
-    """Erzwingt ein Neuladen der Cloud-Daten."""
     st.cache_data.clear()
     st.rerun()
 
 # --- 3. MISSION SETUP (AKTUALISIERTE AGENDA) ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
-# Aktualisierte Tagesagenda
 MISSION_DATA = {
     "09:00": {"name": "Mission Warmup", "duration": 30},
     "09:30": {"name": "The intelligence Briefing with Nico", "duration": 90},
@@ -75,7 +71,7 @@ st.markdown("""
     
     /* PREMIUM STARTBILDSCHIRM */
     .splash-box {
-        text-align: center; margin-top: 8vh; padding: 60px 40px;
+        text-align: center; margin-top: 4vh; padding: 40px 40px; 
         border: 2px solid #00FF41; background-color: #080808;
         box-shadow: 0 0 40px rgba(0, 255, 65, 0.15), inset 0 0 20px rgba(0, 255, 65, 0.05); 
         border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
@@ -85,7 +81,7 @@ st.markdown("""
         text-shadow: 0 0 20px rgba(0, 255, 65, 0.4); margin-bottom: 20px; line-height: 1.1;
     }
     .splash-subtitle {
-        font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 40px; text-transform: uppercase;
+        font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 20px; text-transform: uppercase;
     }
 
     /* Sidebar & Timer */
@@ -132,21 +128,14 @@ st.markdown("""
         outline: none !important;
     }
 
-    /* --- DROPDOWN MENÜ FIX (Deaktivierte Texteingabe) --- */
+    /* --- DROPDOWN MENÜ FIX --- */
     div[data-baseweb="select"] > div {
         background-color: #00FF41 !important; border: none !important; border-radius: 6px !important;
         cursor: pointer !important;
     }
-    
-    /* Verhindert das Eintippen von freiem Text */
-    div[data-baseweb="select"] input {
-        caret-color: transparent !important; 
-        pointer-events: none !important; 
-    }
-    
+    div[data-baseweb="select"] input { caret-color: transparent !important; pointer-events: none !important; }
     div[data-baseweb="select"] span { color: #000000 !important; font-weight: 900 !important; }
     div[data-baseweb="select"] svg { fill: #000000 !important; }
-    
     div[data-baseweb="popover"], ul[role="listbox"] {
         background-color: #080808 !important; border: 1px solid #00FF41 !important; border-radius: 6px !important;
     }
@@ -157,7 +146,6 @@ st.markdown("""
     li[role="option"]:hover, li[role="option"][aria-selected="true"] {
         background-color: #00FF41 !important; color: #000000 !important;
     }
-    /* ------------------------- */
 
     /* Tabs & Boxen */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
@@ -192,9 +180,21 @@ if not st.session_state.access_granted:
             <div class="splash-subtitle">Network Authorization Required &nbsp;&bull;&nbsp; Q1 2026</div>
         </div>
     """, unsafe_allow_html=True)
+    
+    st.write("") 
+    
+    # BILD: Das Teamfoto auf dem Startbildschirm
+    _, col_img, _ = st.columns([1, 2, 1])
+    with col_img:
+        try:
+            st.image("team.png", use_container_width=True)
+        except Exception:
+            pass 
+            
+    st.write("") 
+    
     _, col_mid, _ = st.columns([1,1,1])
     with col_mid:
-        st.write("") # Spacer
         if st.button("INITIATE UPLINK", use_container_width=True):
             st.session_state.access_granted = True
             st.session_state.mission_start_time = time.time()
@@ -208,6 +208,16 @@ else:
 
     # -- SIDEBAR --
     with st.sidebar:
+        # BILD: Wappen zentriert und KLEINER gemacht durch Spaltenaufteilung
+        _, logo_col, _ = st.columns([1, 2, 1])
+        with logo_col:
+            try:
+                st.image("icon.png", use_container_width=True)
+            except Exception:
+                pass
+        
+        st.write("") # Abstand nach dem Logo
+
         st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         elapsed = time.time() - st.session_state.mission_start_time
