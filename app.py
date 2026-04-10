@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
+import os # Wichtig für die Dateipfad-Prüfung
 
 # --- 1. PLUGINS & CONFIG ---
 try:
@@ -16,10 +17,12 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=5)
 def get_cached_data(ws_name):
+    """Lädt Daten aus GSheets und sichert die Tabellenstruktur."""
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
         if df is None: df = pd.DataFrame()
         
+        # Sicherstellen, dass alle nötigen Spalten existieren
         if ws_name == "Profiles":
             for col in ["Agent", "Codename", "Skill", "Questions"]:
                 if col not in df.columns: df[col] = ""
@@ -45,7 +48,7 @@ def force_reload():
     st.cache_data.clear()
     st.rerun()
 
-# --- 3. MISSION SETUP ---
+# --- 3. MISSION SETUP (AKTUALISIERTE AGENDA) ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
 MISSION_DATA = {
@@ -58,10 +61,8 @@ MISSION_DATA = {
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
-# ---------------------------------------------------------
-# !!! HIER DEINEN GITHUB RAW-LINK EINTRAGEN !!!
-# ---------------------------------------------------------
-ICON_URL = "https://raw.githubusercontent.com/DEIN_NAME/DEIN_REPO/main/icon.png"
+# --- BILD-KONFIGURATION (LOKAL) ---
+ICON_FILENAME = "icon.png"
 
 if 'access_granted' not in st.session_state: st.session_state.access_granted = False
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
@@ -160,11 +161,16 @@ if not st.session_state.access_granted:
             <div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 15px;">/// SYSTEM LOCKED ///</div>
     """, unsafe_allow_html=True)
     
-    # ICON: Groß und zentriert auf der Startseite
+    # ICON (LOKAL): Groß und zentriert auf der Startseite
     _, col_img, _ = st.columns([1, 1.2, 1])
     with col_img:
-        # Hier ist KEIN Try-Except mehr. Wenn der Link falsch ist, wirft Streamlit einen sichtbaren Fehler!
-        st.image(ICON_URL, use_container_width=True)
+        # PRÜFUNG: Existiert die Datei im Ordner?
+        if os.path.exists(ICON_FILENAME):
+            # Wenn JA, lade sie
+            st.image(ICON_FILENAME, use_container_width=True)
+        else:
+            # Wenn NEIN, zeige eine klare Warnung anstelle des Bildes
+            st.error(f"⚠️ Bild '{ICON_FILENAME}' nicht im Ordner gefunden! Bitte legen Sie es in denselben Ordner wie die app.py")
             
     st.markdown("""
             <div class="splash-title" style="margin-top: 20px;">PCS<br>INTELLIGENCE</div>
@@ -187,9 +193,13 @@ else:
 
     # -- SIDEBAR --
     with st.sidebar:
-        # ICON: Klein, oben links in der Sidebar platziert
-        st.image(ICON_URL, width=120)  # Feste Breite für das kleine Wappen
-        st.write("") # Kleiner Abstand nach dem Bild
+        # ICON (LOKAL): Klein, oben links in der Sidebar platziert
+        if os.path.exists(ICON_FILENAME):
+            st.image(ICON_FILENAME, width=120)  
+        else:
+            st.error(f"⚠️ '{ICON_FILENAME}' fehlt!")
+            
+        st.write("") 
 
         st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
