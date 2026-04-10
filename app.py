@@ -65,13 +65,11 @@ if 'access_granted' not in st.session_state: st.session_state.access_granted = F
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
-# --- 4. PREMIUM TACTICAL CSS (MIT NEUEN EFFEKTEN) ---
+# --- 4. PREMIUM TACTICAL CSS ---
 st.markdown("""
 <style>
-    /* Basis Layout */
     .stApp { background-color: #030303; color: #FFFFFF; font-family: 'Courier New', Courier, monospace; overflow-x: hidden; }
     
-    /* ANIMATIONEN */
     @keyframes neon-pulse {
         0% { box-shadow: 0 0 10px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.1); }
         50% { box-shadow: 0 0 30px rgba(0,255,65,0.6), inset 0 0 20px rgba(0,255,65,0.3); }
@@ -89,15 +87,13 @@ st.markdown("""
     
     @keyframes typing { from { width: 0 } to { width: 100% } }
     @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00FF41; } }
-
     @keyframes scan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* STARTBILDSCHIRM & WAPPEN (Neon Pulse) */
     .splash-box {
         text-align: center; margin-top: 5vh; padding: 50px 30px;
         border: 2px solid #00FF41; background-color: #080808;
         border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
-        animation: neon-pulse 3s infinite alternate; /* GLOW EFFEKT */
+        animation: neon-pulse 3s infinite alternate;
     }
     .splash-title {
         font-size: 5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
@@ -105,29 +101,31 @@ st.markdown("""
     }
     .splash-subtitle { font-size: 1.2rem; color: #888; letter-spacing: 4px; margin-bottom: 40px; text-transform: uppercase; }
 
-    /* Wappen Glow */
     [data-testid="stImage"] { animation: neon-pulse 4s infinite alternate; border-radius: 12px; }
 
-    /* TYPEWRITER HEADER */
+    /* HEADER & RADAR CONTAINER (Flexbox für Rechtsbündigkeit) */
+    .header-container {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        margin-top: -65px; margin-bottom: 35px;
+    }
+
     .mission-header {
-        width: fit-content; max-width: 100%; background-color: #080808; color: #00FF41; 
+        background-color: #080808; color: #00FF41; 
         padding: 12px 20px; font-weight: 900; font-size: 1.4rem; letter-spacing: 4px; 
-        margin-top: -65px; margin-bottom: 35px; border-radius: 0 0 12px 12px;
+        border-radius: 0 0 12px 12px;
         border: 1px solid #00FF41; border-top: none;
         box-shadow: 0 4px 15px rgba(0,255,65,0.2);
-        
-        /* Typewriter Settings */
         overflow: hidden; white-space: nowrap; border-right: .15em solid #00FF41;
         animation: typing 2.5s steps(40, end), blink-caret .75s step-end infinite;
     }
 
-    /* CSS RADAR ANIMATION (Lottie Alternative) */
-    .radar-container { display: flex; justify-content: center; margin: 20px 0; }
+    /* CSS RADAR (Jetzt Rechts Oben) */
+    .radar-wrapper { margin-top: 15px; margin-right: 20px; }
     .radar {
-        width: 120px; height: 120px;
+        width: 80px; height: 80px; /* Etwas kleiner gemacht für den Header */
         background: radial-gradient(center, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0) 70%);
         border-radius: 50%; border: 2px solid #00FF41; position: relative; overflow: hidden;
-        box-shadow: 0 0 20px rgba(0,255,65,0.4);
+        box-shadow: 0 0 15px rgba(0,255,65,0.4);
     }
     .radar:before {
         content: ' '; display: block; position: absolute;
@@ -142,10 +140,10 @@ st.markdown("""
         background-image: 
             linear-gradient(rgba(0, 255, 65, 0.3) 1px, transparent 1px),
             linear-gradient(90deg, rgba(0, 255, 65, 0.3) 1px, transparent 1px);
-        background-size: 20px 20px; border-radius: 50%;
+        background-size: 15px 15px; border-radius: 50%;
     }
 
-    /* BUTTONS & GLITCH HOVER */
+    /* BUTTONS */
     .stButton>button {
         background-color: #080808 !important; color: #00FF41 !important;
         border: 2px solid #00FF41 !important; height: 3.8rem; font-weight: bold !important;
@@ -155,29 +153,29 @@ st.markdown("""
     .stButton>button:hover { 
         background-color: #00FF41 !important; color: #000 !important; 
         box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
-        /* Glitch Trigger */
         animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
     @keyframes glitch-skew {
-        0% { transform: skew(0deg); }
-        20% { transform: skew(-10deg); }
-        40% { transform: skew(10deg); }
-        60% { transform: skew(-5deg); }
-        80% { transform: skew(5deg); }
-        100% { transform: skew(0deg); }
+        0% { transform: skew(0deg); } 20% { transform: skew(-10deg); }
+        40% { transform: skew(10deg); } 60% { transform: skew(-5deg); }
+        80% { transform: skew(5deg); } 100% { transform: skew(0deg); }
     }
 
     /* Timer Pulse */
     .timer-display {
         font-family: 'Courier New', monospace; color: #00FF41; font-size: 3.8rem; text-align: center;
         border: 2px solid #00FF41; border-radius: 12px; padding: 15px; background: #000;
-        animation: neon-pulse 2s infinite alternate; /* GLOW EFFEKT */
-        margin-bottom: 25px; font-weight: bold;
+        animation: neon-pulse 2s infinite alternate; margin-bottom: 25px; font-weight: bold;
     }
 
-    /* Sidebar, Tabs & Inputs - Gleiches Design wie zuvor */
+    /* SIDEBAR (Kompakter) */
     [data-testid="stSidebar"] { background-color: #080808; border-right: 2px solid #00FF41; }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 1.1rem !important; }
+    /* Generelle Schrift in Sidebar kleiner */
+    [data-testid="stSidebar"] * { color: #FFFFFF !important; font-size: 0.95rem !important; }
+    /* Headers in Sidebar kleiner */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { font-size: 1.1rem !important; margin-bottom: 0px !important;}
+    /* Buttons in Sidebar kleiner */
+    [data-testid="stSidebar"] .stButton>button { height: 2.5rem !important; font-size: 0.8rem !important; border-width: 1px !important; padding: 0.2rem !important; margin-bottom: 0px !important;}
     
     label, p, span, div { color: #E0E0E0 !important; font-size: 1.2rem !important; }
     label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; margin-bottom: 8px; }
@@ -189,7 +187,6 @@ st.markdown("""
     }
     input:focus, textarea:focus { box-shadow: 0 0 15px rgba(0,255,65,0.5) !important; outline: none !important; }
 
-    /* Dropdown Fix */
     div[data-baseweb="select"] > div { background-color: #00FF41 !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; }
     div[data-baseweb="select"] input { caret-color: transparent !important; pointer-events: none !important; }
     div[data-baseweb="select"] span { color: #000000 !important; font-weight: 900 !important; }
@@ -198,7 +195,6 @@ st.markdown("""
     li[role="option"] { background-color: #080808 !important; color: #00FF41 !important; font-weight: bold !important; border-bottom: 1px solid #111; padding: 12px !important; }
     li[role="option"]:hover, li[role="option"][aria-selected="true"] { background-color: #00FF41 !important; color: #000000 !important; }
 
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
         color: #00FF41 !important; border: 1px solid #00FF41 !important; border-bottom: none !important;
@@ -215,7 +211,6 @@ st.markdown("""
 
 # --- 5. APP INTERFACE ---
 if not st.session_state.access_granted:
-    # STARTBILDSCHIRM
     st.markdown("""
         <div class="splash-box">
             <div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 15px;">/// SYSTEM LOCKED ///</div>
@@ -239,29 +234,27 @@ if not st.session_state.access_granted:
             st.session_state.mission_start_time = time.time()
             st.rerun()
 else:
-    # HAUPTMENÜ & TIMER
     if st_autorefresh:
         st_autorefresh(interval=1000, key="timer_tick")
 
-    # TYPEWRITER EFFEKT HIER
-    st.markdown('<div class="mission-header">>> DECRYPTING: PCS MISSION CONTROL ...</div>', unsafe_allow_html=True)
+    # --- HEADER & RADAR LAYOUT ---
+    st.markdown("""
+    <div class="header-container">
+        <div class="mission-header">>> DECRYPTING: PCS MISSION CONTROL ...</div>
+        <div class="radar-wrapper">
+            <div class="radar"><div class="radar-grid"></div></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    # -----------------------------
 
     # -- SIDEBAR --
     with st.sidebar:
-        
-        # WAPPEN IN DER SIDEBAR
         _, col_logo, _ = st.columns([1, 1.5, 1]) 
         with col_logo:
             if os.path.exists(ICON_FILENAME):
                 st.image(ICON_FILENAME, use_container_width=True)
         
-        # NEU: LOTTIE-ALTERNATIVE (CSS RADAR)
-        st.markdown("""
-            <div class="radar-container">
-                <div class="radar"><div class="radar-grid"></div></div>
-            </div>
-        """, unsafe_allow_html=True)
-
         st.markdown("<h3 style='color:#00FF41; text-align:center;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         elapsed = time.time() - st.session_state.mission_start_time
@@ -270,8 +263,9 @@ else:
         t_color = "#00FF41" if rem_sec > 60 else "#FF0000"
         st.markdown(f'<div class="timer-display" style="color:{t_color}; border-color:{t_color};">{m:02d}:{s:02d}</div>', unsafe_allow_html=True)
         
-        st.markdown("---")
-        st.header("MISSION LOG")
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True) # Kompakterer Divider
+        st.markdown("<h3 style='color:#00FF41; text-align:center;'>MISSION LOG</h3>", unsafe_allow_html=True)
+        
         for k, d in MISSION_DATA.items():
             lbl = f"[{k}] {d['name']}"
             if k == st.session_state.active_mission_key: lbl = f"▶ {lbl}"
@@ -280,7 +274,7 @@ else:
                 st.session_state.mission_start_time = time.time()
                 st.rerun()
         
-        st.markdown("---")
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         if st.button("SYNC SYSTEM", use_container_width=True): force_reload()
 
     # -- TABS --
