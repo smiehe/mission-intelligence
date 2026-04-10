@@ -1,21 +1,18 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
 import os
 
 # --- 1. PLUGINS & CONFIG ---
-try:
-    from streamlit_autorefresh import st_autorefresh
-except ImportError:
-    st_autorefresh = None
-
 st.set_page_config(page_title="PCS Intelligence HQ", page_icon="🚀", layout="wide")
 
-# --- 2. DATA ENGINE (Google Sheets) ---
+# --- 2. DATA ENGINE (Google Sheets - HOCHLEISTUNGSMODUS) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.cache_data(ttl=5)
+# PERFORMANCE UPGRADE: Cache von 5 auf 30 Sekunden erhöht!
+@st.cache_data(ttl=30)
 def get_cached_data(ws_name):
     try:
         df = conn.read(worksheet=ws_name, ttl=0)
@@ -65,6 +62,56 @@ if 'access_granted' not in st.session_state: st.session_state.access_granted = F
 if 'active_mission_key' not in st.session_state: st.session_state.active_mission_key = "09:00"
 if 'mission_start_time' not in st.session_state: st.session_state.mission_start_time = time.time()
 
+# --- PERFORMANCE UPGRADE: JAVASCRIPT CHRONOMETER ---
+# Verhindert, dass die Python-App jede Sekunde neu laden muss!
+def render_js_timer(start_time, duration_min):
+    html_code = f"""
+    <style>
+        body {{ margin: 0; background-color: transparent; overflow: hidden; }}
+        .timer-display {{
+            font-family: 'Courier New', monospace; font-size: 3.2rem; text-align: center;
+            border: 2px solid #00FF41; border-radius: 12px; padding: 10px; background: #000;
+            margin-bottom: 5px; font-weight: bold; color: #00FF41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.15); animation: neon-pulse 2s infinite alternate;
+        }}
+        @keyframes neon-pulse {{
+            0% {{ box-shadow: 0 0 10px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.1); }}
+            50% {{ box-shadow: 0 0 30px rgba(0,255,65,0.6), inset 0 0 20px rgba(0,255,65,0.3); }}
+            100% {{ box-shadow: 0 0 10px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.1); }}
+        }}
+    </style>
+    <div id="js-timer" class="timer-display">--:--</div>
+    <script>
+        var startTime = {start_time * 1000};
+        var durationSec = {duration_min * 60};
+        var timerEl = document.getElementById('js-timer');
+        
+        function updateTimer() {{
+            var now = Date.now();
+            var elapsedSec = (now - startTime) / 1000;
+            var remSec = Math.max(0, durationSec - elapsedSec);
+            
+            var m = Math.floor(remSec / 60);
+            var s = Math.floor(remSec % 60);
+            var mStr = m < 10 ? "0" + m : m;
+            var sStr = s < 10 ? "0" + s : s;
+            
+            timerEl.innerHTML = mStr + ":" + sStr;
+            
+            if (remSec <= 60) {{
+                timerEl.style.color = "#FF0000";
+                timerEl.style.borderColor = "#FF0000";
+            }} else {{
+                timerEl.style.color = "#00FF41";
+                timerEl.style.borderColor = "#00FF41";
+            }}
+        }}
+        setInterval(updateTimer, 1000);
+        updateTimer();
+    </script>
+    """
+    components.html(html_code, height=95)
+
 # --- 4. PREMIUM TACTICAL CSS ---
 st.markdown("""
 <style>
@@ -75,7 +122,6 @@ st.markdown("""
         50% { box-shadow: 0 0 30px rgba(0,255,65,0.6), inset 0 0 20px rgba(0,255,65,0.3); }
         100% { box-shadow: 0 0 10px rgba(0,255,65,0.2), inset 0 0 10px rgba(0,255,65,0.1); }
     }
-    
     @keyframes glitch-anim {
         0% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 2px); }
         20% { clip-path: inset(80% 0 10% 0); transform: translate(2px, -2px); }
@@ -84,16 +130,14 @@ st.markdown("""
         80% { clip-path: inset(5% 0 80% 0); transform: translate(-2px, 2px); }
         100% { clip-path: inset(40% 0 40% 0); transform: translate(0); }
     }
-    
     @keyframes typing { from { width: 0 } to { width: 100% } }
     @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00FF41; } }
     @keyframes scan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     .splash-box {
         text-align: center; margin-top: 5vh; padding: 50px 30px;
-        border: 2px solid #00FF41; background-color: #080808;
-        border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
-        animation: neon-pulse 3s infinite alternate;
+        border: 2px solid #00FF41; background-color: #080808; border-radius: 16px; 
+        max-width: 800px; margin-left: auto; margin-right: auto; animation: neon-pulse 3s infinite alternate;
     }
     .splash-title {
         font-size: 5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
@@ -104,17 +148,12 @@ st.markdown("""
     [data-testid="stImage"] { animation: neon-pulse 4s infinite alternate; border-radius: 12px; }
 
     /* HEADER & RADAR CONTAINER */
-    .header-container {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        margin-top: -65px; margin-bottom: 35px;
-    }
+    .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-top: -65px; margin-bottom: 35px; }
 
     .mission-header {
-        background-color: #080808; color: #00FF41; 
-        padding: 12px 20px; font-weight: 900; font-size: 1.4rem; letter-spacing: 4px; 
-        border-radius: 0 0 12px 12px;
-        border: 1px solid #00FF41; border-top: none;
-        box-shadow: 0 4px 15px rgba(0,255,65,0.2);
+        background-color: #080808; color: #00FF41; padding: 12px 20px; font-weight: 900; 
+        font-size: 1.4rem; letter-spacing: 4px; border-radius: 0 0 12px 12px;
+        border: 1px solid #00FF41; border-top: none; box-shadow: 0 4px 15px rgba(0,255,65,0.2);
         overflow: hidden; white-space: nowrap; border-right: .15em solid #00FF41;
         animation: typing 2.5s steps(40, end), blink-caret .75s step-end infinite;
     }
@@ -122,50 +161,34 @@ st.markdown("""
     /* CSS RADAR */
     .radar-wrapper { margin-top: 15px; margin-right: 20px; }
     .radar {
-        width: 80px; height: 80px; 
-        background: radial-gradient(center, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0) 70%);
-        border-radius: 50%; border: 2px solid #00FF41; position: relative; overflow: hidden;
-        box-shadow: 0 0 15px rgba(0,255,65,0.4);
+        width: 80px; height: 80px; background: radial-gradient(center, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0) 70%);
+        border-radius: 50%; border: 2px solid #00FF41; position: relative; overflow: hidden; box-shadow: 0 0 15px rgba(0,255,65,0.4);
     }
     .radar:before {
-        content: ' '; display: block; position: absolute;
-        width: 50%; height: 50%; top: 0; left: 0;
-        border-right: 2px solid #00FF41; border-bottom: 2px solid #00FF41;
-        border-bottom-right-radius: 100%;
+        content: ' '; display: block; position: absolute; width: 50%; height: 50%; top: 0; left: 0;
+        border-right: 2px solid #00FF41; border-bottom: 2px solid #00FF41; border-bottom-right-radius: 100%;
         background: linear-gradient(45deg, rgba(0,0,0,0) 0%, rgba(0,255,65,0.5) 100%);
         transform-origin: 100% 100%; animation: scan 2s linear infinite;
     }
     .radar-grid {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background-image: 
-            linear-gradient(rgba(0, 255, 65, 0.3) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 255, 65, 0.3) 1px, transparent 1px);
+        background-image: linear-gradient(rgba(0, 255, 65, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 65, 0.3) 1px, transparent 1px);
         background-size: 15px 15px; border-radius: 50%;
     }
 
     /* BUTTONS */
     .stButton>button {
-        background-color: #080808 !important; color: #00FF41 !important;
-        border: 2px solid #00FF41 !important; height: 3.8rem; font-weight: bold !important;
-        border-radius: 8px !important; transition: all 0.2s ease !important;
+        background-color: #080808 !important; color: #00FF41 !important; border: 2px solid #00FF41 !important; 
+        height: 3.8rem; font-weight: bold !important; border-radius: 8px !important; transition: all 0.2s ease !important;
         text-transform: uppercase; letter-spacing: 1px; position: relative;
     }
     .stButton>button:hover { 
-        background-color: #00FF41 !important; color: #000 !important; 
-        box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
+        background-color: #00FF41 !important; color: #000 !important; box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
         animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
     @keyframes glitch-skew {
-        0% { transform: skew(0deg); } 20% { transform: skew(-10deg); }
-        40% { transform: skew(10deg); } 60% { transform: skew(-5deg); }
-        80% { transform: skew(5deg); } 100% { transform: skew(0deg); }
-    }
-
-    /* Timer Pulse */
-    .timer-display {
-        font-family: 'Courier New', monospace; color: #00FF41; font-size: 3.8rem; text-align: center;
-        border: 2px solid #00FF41; border-radius: 12px; padding: 15px; background: #000;
-        animation: neon-pulse 2s infinite alternate; margin-bottom: 25px; font-weight: bold;
+        0% { transform: skew(0deg); } 20% { transform: skew(-10deg); } 40% { transform: skew(10deg); } 
+        60% { transform: skew(-5deg); } 80% { transform: skew(5deg); } 100% { transform: skew(0deg); }
     }
 
     /* SIDEBAR */
@@ -177,11 +200,7 @@ st.markdown("""
     label, p, span, div { color: #E0E0E0 !important; font-size: 1.2rem !important; }
     label { color: #00FF41 !important; font-weight: bold !important; font-size: 1.3rem !important; margin-bottom: 8px; }
     
-    input, textarea { 
-        background-color: #050505 !important; color: #FFF !important; 
-        border: 1px solid #00FF41 !important; border-radius: 6px !important;
-        font-size: 1.2rem !important; padding: 10px !important;
-    }
+    input, textarea { background-color: #050505 !important; color: #FFF !important; border: 1px solid #00FF41 !important; border-radius: 6px !important; font-size: 1.2rem !important; padding: 10px !important; }
     input:focus, textarea:focus { box-shadow: 0 0 15px rgba(0,255,65,0.5) !important; outline: none !important; }
 
     div[data-baseweb="select"] > div { background-color: #00FF41 !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; }
@@ -193,11 +212,7 @@ st.markdown("""
     li[role="option"]:hover, li[role="option"][aria-selected="true"] { background-color: #00FF41 !important; color: #000000 !important; }
 
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] {
-        color: #00FF41 !important; border: 1px solid #00FF41 !important; border-bottom: none !important;
-        background: #080808 !important; font-size: 1.2rem !important; border-radius: 8px 8px 0 0 !important;
-        padding: 10px 20px !important; transition: all 0.3s ease;
-    }
+    .stTabs [data-baseweb="tab"] { color: #00FF41 !important; border: 1px solid #00FF41 !important; border-bottom: none !important; background: #080808 !important; font-size: 1.2rem !important; border-radius: 8px 8px 0 0 !important; padding: 10px 20px !important; transition: all 0.3s ease; }
     .stTabs [aria-selected="true"] { background-color: #00FF41 !important; color: #000 !important; font-weight: bold !important; }
     
     .prompt-box { border: 1px dashed #00FF41; padding: 20px; background: #0A0A0A; margin-bottom: 25px; border-radius: 8px; border-left: 5px solid #00FF41; }
@@ -231,9 +246,6 @@ if not st.session_state.access_granted:
             st.session_state.mission_start_time = time.time()
             st.rerun()
 else:
-    if st_autorefresh:
-        st_autorefresh(interval=1000, key="timer_tick")
-
     st.markdown("""
     <div class="header-container">
         <div class="mission-header">>> DECRYPTING: PCS MISSION CONTROL ...</div>
@@ -251,12 +263,10 @@ else:
                 st.image(ICON_FILENAME, use_container_width=True)
         
         st.markdown("<h3 style='color:#00FF41; text-align:center;'>CHRONOMETER</h3>", unsafe_allow_html=True)
+        
+        # Aufruf des neuen, ressourcenschonenden JavaScript-Timers!
         active_info = MISSION_DATA[st.session_state.active_mission_key]
-        elapsed = time.time() - st.session_state.mission_start_time
-        rem_sec = max(0, (active_info['duration'] * 60) - elapsed)
-        m, s = divmod(int(rem_sec), 60)
-        t_color = "#00FF41" if rem_sec > 60 else "#FF0000"
-        st.markdown(f'<div class="timer-display" style="color:{t_color}; border-color:{t_color};">{m:02d}:{s:02d}</div>', unsafe_allow_html=True)
+        render_js_timer(st.session_state.mission_start_time, active_info['duration'])
         
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         st.markdown("<h3 style='color:#00FF41; text-align:center;'>MISSION LOG</h3>", unsafe_allow_html=True)
@@ -293,13 +303,17 @@ else:
             a_ques = st.text_area("Deine 3 Leitfragen:")
 
         if save_p and c_name:
+            st.toast("📡 Daten werden an den Mainframe gesendet...", icon="⏳") # Feedback für den User
             df_p = get_cached_data("Profiles")
             new_p = pd.DataFrame([{"Agent": a_name, "Codename": c_name, "Skill": a_skill, "Questions": a_ques}])
             if not df_p.empty: df_p = df_p[df_p["Agent"] != a_name] 
             updated_p = pd.concat([df_p, new_p], ignore_index=True)
+            
             conn.update(worksheet="Profiles", data=updated_p)
+            st.cache_data.clear()
             st.success("DATA COMMITTED")
-            force_reload()
+            time.sleep(0.5)
+            st.rerun()
 
         st.markdown("---")
         st.subheader("Aktive Team Datenbank")
@@ -310,9 +324,12 @@ else:
                     st.write(f"**Perspektive:** {r.get('Skill', '')}")
                     st.write(f"**Leitfragen:** {r.get('Questions', '')}")
                     if st.button("🗑️ DATENSATZ LÖSCHEN", key=f"del_p_{r['Agent']}"):
+                        st.toast("🗑️ Lösche Akte...", icon="⏳")
                         cleaned_df = p_list[p_list["Agent"] != r["Agent"]]
                         conn.update(worksheet="Profiles", data=cleaned_df)
-                        force_reload()
+                        st.cache_data.clear()
+                        time.sleep(0.5)
+                        st.rerun()
 
     # TAB 2: SABOTAGE
     with t2:
@@ -324,12 +341,16 @@ else:
         s_details = st.text_area("Details der Sabotage:")
 
         if save_s and s_thema:
+            st.toast("📡 Bericht wird übermittelt...", icon="⏳")
             df_s = get_cached_data("Sabotage")
             new_s = pd.DataFrame([{"Thema": s_thema, "Details": s_details}])
             updated_s = pd.concat([df_s, new_s], ignore_index=True).drop_duplicates(subset=["Thema"])
+            
             conn.update(worksheet="Sabotage", data=updated_s)
+            st.cache_data.clear()
             st.success("BREACH REGISTERED")
-            force_reload()
+            time.sleep(0.5)
+            st.rerun()
 
         st.markdown("---")
         s_list = get_cached_data("Sabotage")
@@ -337,29 +358,26 @@ else:
             with st.expander(f"🔴 ALERT: {r['Thema']}"):
                 st.write(f"DETAILS: {r['Details']}")
                 if st.button("🗑️ AKTE SCHLIEẞEN", key=f"del_s_{r['Thema']}"):
+                    st.toast("🗑️ Archivierung läuft...", icon="⏳")
                     cleaned_s = s_list[s_list["Thema"] != r["Thema"]]
                     conn.update(worksheet="Sabotage", data=cleaned_s)
-                    force_reload()
+                    st.cache_data.clear()
+                    time.sleep(0.5)
+                    st.rerun()
 
-    # TAB 3: RANKING (NEU: LIVE-BAR-CHART)
+    # TAB 3: RANKING
     with t3:
-        # 1. LIVE-RANKING VISUALISIERUNG
         st.header("Live-Ranking der Bedrohungen")
         df_v_live = get_cached_data("Votes")
         
         if df_v_live.empty:
             st.info("Es wurden noch keine Coins investiert. Das Ranking ist offline.")
         else:
-            # Berechne die Summe aller Spalten (außer Voter und Total)
             ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
             ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
-            
-            # Stelle die Daten als Balkendiagramm dar
             st.bar_chart(ranking_data.set_index("Sabotage-Thema"), use_container_width=True)
             
         st.markdown("---")
-        
-        # 2. DAS VOTING-TERMINAL
         st.subheader("Task 3: Coins investieren")
         df_coins = get_cached_data("Sabotage")
         if df_coins.empty:
@@ -378,15 +396,18 @@ else:
             
             if spent == 100:
                 if st.button("FINALIZE TRANSACTION", use_container_width=True):
+                    st.toast("💰 Transaktion wird validiert...", icon="⏳")
                     vote_row = {"Voter": voter, "Total": 100}
                     vote_row.update(investments)
                     df_v = get_cached_data("Votes")
                     if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
+                    
                     conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
+                    st.cache_data.clear()
                     st.balloons()
                     st.success("TRANSACTION SECURED")
                     time.sleep(1.5)
-                    force_reload() # Lädt die Seite neu, damit das Chart sofort updated
+                    st.rerun()
 
     # TAB 4: DEEP DIVE
     with t4:
@@ -415,6 +436,7 @@ else:
                     diskussion_text = st.text_area("Diskussions-Protokoll (Live):", value=existing_notes, height=150, key=f"dd_text_{thema}")
                     
                     if st.button("💾 NOTIZEN SPEICHERN", key=f"dd_save_{thema}"):
+                        st.toast("💾 Sichere Protokoll...", icon="⏳")
                         new_dd_row = pd.DataFrame([{"Titel": thema, "Diskussion": diskussion_text}])
                         
                         df_current_dd = get_cached_data("Deep_Dive")
@@ -423,7 +445,8 @@ else:
                             
                         updated_dd = pd.concat([df_current_dd, new_dd_row], ignore_index=True)
                         conn.update(worksheet="Deep_Dive", data=updated_dd)
+                        st.cache_data.clear()
                         
                         st.success(f"Notizen für '{thema}' erfolgreich im Archiv gesichert!")
-                        time.sleep(1)
-                        force_reload()
+                        time.sleep(0.5)
+                        st.rerun()
