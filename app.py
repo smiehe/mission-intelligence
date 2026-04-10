@@ -185,17 +185,18 @@ else:
 
     st.markdown('<div class="mission-header">>> PCS INTELLIGENCE // MAIN COMPUTER // SECURE ACCESS</div>', unsafe_allow_html=True)
 
-    # --- NEU: ICON IM HAUPTFENSTER (Zentriert & Präsent) ---
-    _, col_main_logo, _ = st.columns([1, 1, 1]) # [1,1,1] macht es genau 33% der Bildschirmbreite groß
-    with col_main_logo:
-        if os.path.exists(ICON_FILENAME):
-            st.image(ICON_FILENAME, use_container_width=True)
-    
-    st.write("") # Etwas Luft zum Atmen vor den Tabs
-    # --------------------------------------------------------
-
     # -- SIDEBAR --
     with st.sidebar:
+        # --- NEU: WAPPEN ZENTRIERT IN DER SIDEBAR ---
+        # Wir dritteln die Sidebar, das Bild kommt in die Mitte (col_logo)
+        _, col_logo, _ = st.columns([1, 1.5, 1]) 
+        with col_logo:
+            if os.path.exists(ICON_FILENAME):
+                st.image(ICON_FILENAME, use_container_width=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True) # Etwas Luft nach unten
+        # ---------------------------------------------
+
         st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
         active_info = MISSION_DATA[st.session_state.active_mission_key]
         elapsed = time.time() - st.session_state.mission_start_time
