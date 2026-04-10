@@ -365,49 +365,93 @@ else:
                     time.sleep(0.5)
                     st.rerun()
 
-    # TAB 3: RANKING
+   # TAB 3: RANKING (UPGRADED DESIGN: DARK & TURQUOISE)
     with t3:
         st.header("Live-Ranking der Bedrohungen")
         df_v_live = get_cached_data("Votes")
         
-        if df_v_live.empty:
-            st.info("Es wurden noch keine Coins investiert. Das Ranking ist offline.")
+        # Sicherstellen, dass wir Spalten für die Themen haben (alles außer Voter und Total)
+        vote_cols = [c for c in df_v_live.columns if c not in ["Voter", "Total"]]
+        
+        if df_v_live.empty or not vote_cols:
+            st.markdown("""
+            <div style="border: 1px dashed #FF4B4B; padding: 20px; background: rgba(255, 75, 75, 0.05); border-radius: 8px; border-left: 5px solid #FF4B4B; text-align: center; margin-bottom: 20px;">
+                <span style="color: #FF4B4B; font-weight: bold; font-family: 'Courier New', monospace;">[!] KEINE DATEN VORHANDEN. SYSTEM WARTET AUF COIN-TRANSAKTIONEN.</span>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
-            ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
-            st.bar_chart(ranking_data.set_index("Sabotage-Thema"), use_container_width=True)
+            # 1. ERZWINGE ZAHLEN-FORMAT
+            for col in vote_cols:
+                df_v_live[col] = pd.to_numeric(df_v_live[col], errors='coerce').fillna(0)
+                
+            # 2. Daten summieren und sortieren
+            ranking_data = df_v_live[vote_cols].sum().reset_index()
+            ranking_data.columns = ["Thema", "Coins"]
+            ranking_data = ranking_data.sort_values(by="Coins", ascending=False)
+            
+            # Höchstwert für die Prozentrechnung
+            max_coins = ranking_data["Coins"].max()
+            if max_coins == 0: max_coins = 1 
+            
+            # 3. HTML Cyber-Balkendiagramm (Dunkler Hintergrund & Türkis)
+            # Hintergrund auf #050505 (fast Schwarz) gesetzt
+            html_bars = "<div style='margin-bottom: 40px; padding: 20px; border: 1px solid #111; background: #000000; border-radius: 12px; box-shadow: inset 0 0 30px rgba(0,255,255,0.05);'>"
+            
+            for idx, row in ranking_data.iterrows():
+                thema = row["Thema"]
+                coins = int(row["Coins"])
+                percentage = int((coins / max_coins) * 100)
+                
+                # Türkis-Farbton: #00CED1 (DarkTurquoise) oder #40E0D0 (Turquoise)
+                # Hier genutzt: Ein strahlendes Cyan-Türkis (#00f2ff)
+                html_bars += f"""
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #FFF; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.1rem; text-transform: uppercase;">> {thema}</span>
+                        <span style="color: #00f2ff; font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.2rem; text-shadow: 0 0 8px rgba(0,242,255,0.6);">{coins} COINS</span>
+                    </div>
+                    <div style="width: 100%; background-color: #0a0a0a; border: 1px solid #222; border-radius: 4px; height: 32px; overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,1);">
+                        <div style="width: {percentage}%; background: linear-gradient(90deg, #008080 0%, #00f2ff 100%); height: 100%; border-radius: 2px; box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); animation: growBar 1.5s ease-out forwards;"></div>
+                    </div>
+                </div>
+                """
+            html_bars += "</div>"
+            st.markdown(html_bars, unsafe_allow_html=True)
             
         st.markdown("---")
         st.subheader("Task 3: Coins investieren")
         df_coins = get_cached_data("Sabotage")
+        
         if df_coins.empty:
             st.warning("Warten auf Sabotage-Berichte aus Task 2...")
         else:
             voter = st.selectbox("Assigning Officer:", AGENT_LIST, key="v_sel")
             spent = 0
             investments = {}
-            for item in df_coins["Thema"].unique():
+            
+            valid_themes = [t for t in df_coins["Thema"].unique() if pd.notna(t) and str(t).strip() != ""]
+            
+            for item in valid_themes:
                 val = st.slider(f"Investment: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
                 investments[item] = val
                 spent += val
             
-            c_status = "#00FF41" if spent == 100 else "#FF4B4B"
+            c_status = "#00f2ff" if spent == 100 else "#FF4B4B"
             st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
             
-            if spent == 100:
-                if st.button("FINALIZE TRANSACTION", use_container_width=True):
-                    st.toast("💰 Transaktion wird validiert...", icon="⏳")
-                    vote_row = {"Voter": voter, "Total": 100}
-                    vote_row.update(investments)
-                    df_v = get_cached_data("Votes")
-                    if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
-                    
-                    conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
-                    st.cache_data.clear()
-                    st.balloons()
-                    st.success("TRANSACTION SECURED")
-                    time.sleep(1.5)
-                    st.rerun()
+            if st.button("FINALIZE TRANSACTION", use_container_width=True, disabled=(spent != 100)):
+                st.toast("💰 Transaktion wird validiert...", icon="⏳")
+                vote_row = {"Voter": voter, "Total": 100}
+                vote_row.update(investments)
+                df_v = get_cached_data("Votes")
+                if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
+                
+                conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
+                st.cache_data.clear()
+                st.balloons()
+                st.success("TRANSACTION SECURED")
+                time.sleep(1.5)
+                st.rerun()
 
     # TAB 4: DEEP DIVE
     with t4:
