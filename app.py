@@ -49,17 +49,17 @@ def force_reload():
     st.cache_data.clear()
     st.rerun()
 
-# --- 3. MISSION SETUP (KOMPAKTE AGENDA) ---
+# --- 3. MISSION SETUP (AKTUALISIERTE AGENDA) ---
 AGENT_LIST = ["Sören", "Laura", "Tamara", "Janina", "Christin", "Leo", "Claudine"]
 
-# Kompakte Agenda
+# Aktualisierte Tagesagenda
 MISSION_DATA = {
-    "09:00": {"name": "Mission Warmup (Task 1-3)", "duration": 30},
-    "09:30": {"name": "The Intelligence Briefing (Nico)", "duration": 90},
+    "09:00": {"name": "Mission Warmup", "duration": 30},
+    "09:30": {"name": "The intelligence Briefing with Nico", "duration": 90},
     "11:15": {"name": "The Deep-Dive Mission", "duration": 90},
-    "12:45": {"name": "Field Rations (Lunch)", "duration": 60},
-    "13:45": {"name": "Final Briefing (Wrap-up)", "duration": 30},
-    "15:30": {"name": "Field Operation (Museum)", "duration": 120},
+    "12:45": {"name": "Field Rations (Lunch)", "duration": 45},
+    "13:30": {"name": "Final Briefing (Wrap-up)", "duration": 45},
+    "15:30": {"name": "Field Operation", "duration": 120},
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
@@ -132,10 +132,18 @@ st.markdown("""
         outline: none !important;
     }
 
-    /* --- DROPDOWN MENÜ FIX --- */
+    /* --- DROPDOWN MENÜ FIX (Deaktivierte Texteingabe) --- */
     div[data-baseweb="select"] > div {
         background-color: #00FF41 !important; border: none !important; border-radius: 6px !important;
+        cursor: pointer !important;
     }
+    
+    /* Verhindert das Eintippen von freiem Text */
+    div[data-baseweb="select"] input {
+        caret-color: transparent !important; 
+        pointer-events: none !important; 
+    }
+    
     div[data-baseweb="select"] span { color: #000000 !important; font-weight: 900 !important; }
     div[data-baseweb="select"] svg { fill: #000000 !important; }
     
@@ -149,6 +157,7 @@ st.markdown("""
     li[role="option"]:hover, li[role="option"][aria-selected="true"] {
         background-color: #00FF41 !important; color: #000000 !important;
     }
+    /* ------------------------- */
 
     /* Tabs & Boxen */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
@@ -175,7 +184,7 @@ st.markdown("""
 
 # --- 5. APP INTERFACE ---
 if not st.session_state.access_granted:
-    # STARTBILDSCHIRM (Schick & Modern)
+    # STARTBILDSCHIRM
     st.markdown("""
         <div class="splash-box">
             <div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 15px;">/// SYSTEM LOCKED ///</div>
@@ -220,10 +229,10 @@ else:
         st.markdown("---")
         if st.button("SYNC SYSTEM", use_container_width=True): force_reload()
 
-    # -- TABS (Aktualisiert auf 4 Tabs) --
+    # -- TABS --
     t1, t2, t3, t4 = st.tabs(["👤 TEAM", "📂 SABOTAGE", "💰 RANKING", "🤿 DEEP DIVE"])
 
-    # TAB 1: TEAM (Aufgabe 1)
+    # TAB 1: TEAM
     with t1:
         st.header("Task 1: Agenten-Identität")
         st.markdown('<div class="prompt-box"><b>GAIA Prompt:</b><br>"Ich nehme heute an einem Workshop zum Thema KI im PM teil. Erstelle mir eine Agenten-Identität für diesen Tag. Meine 2 PM-Stärken: [X], Meine 2 PM-Schwächen: [Y]. Generiere: Agentenname, Sichtweise und drei Leitfragen."</div>', unsafe_allow_html=True)
@@ -262,7 +271,7 @@ else:
                         conn.update(worksheet="Profiles", data=cleaned_df)
                         force_reload()
 
-    # TAB 2: SABOTAGE (Aufgabe 2)
+    # TAB 2: SABOTAGE
     with t2:
         top_c1s, top_c2s = st.columns([0.7, 0.3])
         with top_c1s: st.header("Task 2: Die Sabotage-Akte")
@@ -289,7 +298,7 @@ else:
                     conn.update(worksheet="Sabotage", data=cleaned_s)
                     force_reload()
 
-    # TAB 3: RANKING (Aufgabe 3)
+    # TAB 3: RANKING
     with t3:
         st.header("Task 3: Ranking")
         df_coins = get_cached_data("Sabotage")
@@ -317,7 +326,7 @@ else:
                     st.balloons()
                     st.success("TRANSACTION SECURED")
 
-    # TAB 4: DEEP DIVE (Neues Feature)
+    # TAB 4: DEEP DIVE
     with t4:
         st.header("Live-Diskussion: Deep Dive")
         st.write("Hier dokumentieren wir die Lösungsansätze zu den identifizierten Sabotage-Akten.")
@@ -333,7 +342,6 @@ else:
                 thema = row["Thema"]
                 details = row["Details"]
                 
-                # Prüfen, ob schon Notizen in der "Deep_Dive" Tabelle existieren
                 existing_notes = ""
                 if not df_deepdive.empty and thema in df_deepdive["Titel"].values:
                     existing_notes = df_deepdive[df_deepdive["Titel"] == thema]["Diskussion"].iloc[0]
@@ -342,7 +350,6 @@ else:
                     st.write(f"**Ursprüngliches Problem:** {details}")
                     st.write("")
                     
-                    # Einzigartiger Key für jedes Textfeld, befüllt mit bestehenden Daten
                     diskussion_text = st.text_area("Diskussions-Protokoll (Live):", value=existing_notes, height=150, key=f"dd_text_{thema}")
                     
                     if st.button("💾 NOTIZEN SPEICHERN", key=f"dd_save_{thema}"):
@@ -356,5 +363,5 @@ else:
                         conn.update(worksheet="Deep_Dive", data=updated_dd)
                         
                         st.success(f"Notizen für '{thema}' erfolgreich im Archiv gesichert!")
-                        time.sleep(1) # Kurze Pause, damit der Nutzer die Erfolgsmeldung sieht
+                        time.sleep(1)
                         force_reload()
