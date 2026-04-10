@@ -58,8 +58,9 @@ MISSION_DATA = {
     "17:30": {"name": "Safe House Drinks & Dinner", "duration": 180}
 }
 
-# --- BILD-RESSOURCEN (GITHUB) ---
-# Trage hier deinen RAW-Link zum Icon ein:
+# ---------------------------------------------------------
+# !!! HIER DEINEN GITHUB RAW-LINK EINTRAGEN !!!
+# ---------------------------------------------------------
 ICON_URL = "https://raw.githubusercontent.com/DEIN_NAME/DEIN_REPO/main/icon.png"
 
 if 'access_granted' not in st.session_state: st.session_state.access_granted = False
@@ -72,13 +73,13 @@ st.markdown("""
     .stApp { background-color: #030303; color: #FFFFFF; font-family: 'Courier New', Courier, monospace; }
     
     .splash-box {
-        text-align: center; margin-top: 8vh; padding: 60px 40px;
+        text-align: center; margin-top: 5vh; padding: 50px 30px;
         border: 2px solid #00FF41; background-color: #080808;
         box-shadow: 0 0 40px rgba(0, 255, 65, 0.15), inset 0 0 20px rgba(0, 255, 65, 0.05); 
         border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;
     }
     .splash-title {
-        font-size: 5.5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
+        font-size: 5rem; font-weight: 900; letter-spacing: 10px; color: #00FF41;
         text-shadow: 0 0 20px rgba(0, 255, 65, 0.4); margin-bottom: 20px; line-height: 1.1;
     }
     .splash-subtitle {
@@ -157,19 +158,19 @@ if not st.session_state.access_granted:
     st.markdown("""
         <div class="splash-box">
             <div style="color: #00FF41; font-weight: bold; letter-spacing: 4px; margin-bottom: 15px;">/// SYSTEM LOCKED ///</div>
-            <div class="splash-title">PCS<br>INTELLIGENCE</div>
-            <div class="splash-subtitle">Network Authorization Required &nbsp;&bull;&nbsp; Q1 2026</div>
     """, unsafe_allow_html=True)
     
-    # ICON: Zentriert auf dem Startbildschirm
-    _, col_img, _ = st.columns([1.5, 1, 1.5]) # Verhältnisse anpassen für die gewünschte Größe
+    # ICON: Groß und zentriert auf der Startseite
+    _, col_img, _ = st.columns([1, 1.2, 1])
     with col_img:
-        try:
-            st.image(ICON_URL, use_container_width=True)
-        except Exception:
-            pass # Fängt Fehler ab, falls URL falsch ist
+        # Hier ist KEIN Try-Except mehr. Wenn der Link falsch ist, wirft Streamlit einen sichtbaren Fehler!
+        st.image(ICON_URL, use_container_width=True)
             
-    st.markdown("</div><br>", unsafe_allow_html=True) # Schließt die Box
+    st.markdown("""
+            <div class="splash-title" style="margin-top: 20px;">PCS<br>INTELLIGENCE</div>
+            <div class="splash-subtitle">Network Authorization Required &nbsp;&bull;&nbsp; Q1 2026</div>
+        </div><br>
+    """, unsafe_allow_html=True)
     
     _, col_mid, _ = st.columns([1,1,1])
     with col_mid:
@@ -186,13 +187,8 @@ else:
 
     # -- SIDEBAR --
     with st.sidebar:
-        # ICON: Oben Links in der Sidebar (Klein platziert über Spalten-Trick)
-        _, logo_col, _ = st.columns([1, 2, 1])
-        with logo_col:
-            try:
-                st.image(ICON_URL, use_container_width=True)
-            except Exception:
-                pass
+        # ICON: Klein, oben links in der Sidebar platziert
+        st.image(ICON_URL, width=120)  # Feste Breite für das kleine Wappen
         st.write("") # Kleiner Abstand nach dem Bild
 
         st.markdown("<h3 style='color:#00FF41;'>CHRONOMETER</h3>", unsafe_allow_html=True)
