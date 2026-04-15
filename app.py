@@ -371,26 +371,17 @@ else:
         st.header("Live-Ranking der Bedrohungen")
         df_v_live = get_cached_data("Votes")
         
-        if df_v_live.empty:
+        vote_cols = [c for c in df_v_live.columns if c not in ["Voter", "Total"]]
+        
+        if df_v_live.empty or not vote_cols:
             st.info("Es wurden noch keine Coins investiert. Das Ranking ist offline.")
         else:
-            ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
-            ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
-
-# Altair Chart bauen mit schwarzem Hintergrund, weißer Schrift und türkisen Balken
-chart = alt.Chart(ranking_data).mark_bar(color="#00f2ff").encode(
-    x=alt.X('Sabotage-Thema', axis=alt.Axis(labelColor='white', titleColor='white')),
-    y=alt.Y('Investierte Coins', axis=alt.Axis(labelColor='white', titleColor='white', grid=False))
-).properties(
-    background="#050505" # Tiefschwarzer Hintergrund
-).configure_view(
-    strokeWidth=0 # Entfernt den Rahmen
-)
-
-st.altair_chart(chart, use_container_width=True)
+            # ... (Altair Code hier) ...
+            st.altair_chart(chart, use_container_width=True)
             
-        st.markdown("---")
+        st.markdown("---") # <--- DIESE ZEILE MUSS EXAKT UNTER DEM 'if' UND 'else' STEHEN (8 Leerzeichen)
         st.subheader("Task 3: Coins investieren")
+        
         df_coins = get_cached_data("Sabotage")
         if df_coins.empty:
             st.warning("Warten auf Sabotage-Berichte aus Task 2...")
