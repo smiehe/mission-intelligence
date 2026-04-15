@@ -4,6 +4,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
 import os
+import altair as alt
 
 # --- 1. PLUGINS & CONFIG ---
 st.set_page_config(page_title="PCS Intelligence HQ", page_icon="🚀", layout="wide")
@@ -222,7 +223,7 @@ else:
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         if st.button("SYNC SYSTEM", use_container_width=True): force_reload()
 
-    # --- TABS (JETZT MIT SALLY DOKU) ---
+    # --- TABS ---
     t1, t2, t3, t4, t5 = st.tabs(["👤 TEAM", "📂 SABOTAGE", "💰 RANKING", "🤿 DEEP DIVE", "🤖 SALLY DOKU"])
 
     with t1:
@@ -259,10 +260,28 @@ else:
     with t3:
         st.header("Live-Ranking der Bedrohungen")
         df_v_live = get_cached_data("Votes")
-        if not df_v_live.empty:
-            ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
+        vote_cols = [c for c in df_v_live.columns if c not in ["Voter", "Total"]]
+        
+        if not df_v_live.empty and vote_cols:
+            # Daten bereinigen
+            for col in vote_cols:
+                df_v_live[col] = pd.to_numeric(df_v_live[col], errors='coerce').fillna(0)
+            
+            ranking_data = df_v_live[vote_cols].sum().reset_index()
             ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
-            st.bar_chart(ranking_data.set_index("Sabotage-Thema"), use_container_width=True)
+            
+            # --- ALTAIR CHART: SCHWARZER HINTERGRUND, TÜRKIS, WEISSE SCHRIFT ---
+            chart = alt.Chart(ranking_data).mark_bar(color="#00f2ff").encode(
+                x=alt.X('Sabotage-Thema:N', axis=alt.Axis(labelColor='white', titleColor='white', labelAngle=-45)),
+                y=alt.Y('Investierte Coins:Q', axis=alt.Axis(labelColor='white', titleColor='white', grid=False))
+            ).properties(
+                background="#050505"
+            ).configure_view(
+                strokeWidth=0
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.info("Es wurden noch keine Coins investiert. Das Ranking ist offline.")
         
         st.markdown("---")
         st.subheader("Task 3: Coins investieren")
@@ -275,7 +294,7 @@ else:
                 val = st.slider(f"Investment: {item}", 0, 100, 0, key=f"c_{voter}_{item}")
                 investments[item] = val
                 spent += val
-            st.markdown(f"### Budget-Status: {spent} / 100")
+            st.markdown(f"### Budget-Status: <span style='color:{'#00f2ff' if spent==100 else '#FF4B4B'}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
             if st.button("FINALIZE TRANSACTION", use_container_width=True, disabled=(spent != 100)):
                 vote_row = {"Voter": voter, "Total": 100}
                 vote_row.update(investments)
@@ -296,7 +315,7 @@ else:
                     conn.update(worksheet="Deep_Dive", data=pd.concat([df_deepdive[df_deepdive["Titel"] != row['Thema']], new_dd], ignore_index=True))
                     force_reload()
 
-    # --- NEU: TAB 5 SALLY DOKU ---
+    # --- TAB 5 SALLY DOKU ---
     with t5:
         st.header("🤖 Sally Intelligence Protokoll")
         st.write("Fügen Sie hier das Protokoll von Sally (KI-Protokollant) ein.")
