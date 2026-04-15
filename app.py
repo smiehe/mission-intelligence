@@ -187,6 +187,9 @@ st.markdown("""
         background-color: #00FF41 !important; color: #000 !important; box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
         animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
     }
+    .stButton>button:disabled {
+        background-color: #111 !important; color: #444 !important; border-color: #333 !important; box-shadow: none !important; cursor: not-allowed;
+    }
     @keyframes glitch-skew {
         0% { transform: skew(0deg); } 20% { transform: skew(-10deg); } 40% { transform: skew(10deg); } 
         60% { transform: skew(-5deg); } 80% { transform: skew(5deg); } 100% { transform: skew(0deg); }
@@ -376,13 +379,29 @@ else:
         if df_v_live.empty or not vote_cols:
             st.info("Es wurden noch keine Coins investiert. Das Ranking ist offline.")
         else:
-            # ... (Altair Code hier) ...
+            # Daten bereinigen (verhindert Strings)
+            for col in vote_cols:
+                df_v_live[col] = pd.to_numeric(df_v_live[col], errors='coerce').fillna(0)
+                
+            ranking_data = df_v_live[vote_cols].sum().reset_index()
+            ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
+            
+            # ALTAIR CHART MIT SCHWARZEM HINTERGRUND UND TÜRKISEN BALKEN
+            chart = alt.Chart(ranking_data).mark_bar(color="#00f2ff").encode(
+                x=alt.X('Sabotage-Thema:N', axis=alt.Axis(labelColor='white', titleColor='white', labelAngle=-45)),
+                y=alt.Y('Investierte Coins:Q', axis=alt.Axis(labelColor='white', titleColor='white', grid=False))
+            ).properties(
+                background="#050505"
+            ).configure_view(
+                strokeWidth=0
+            )
+            
             st.altair_chart(chart, use_container_width=True)
             
-        st.markdown("---") # <--- DIESE ZEILE MUSS EXAKT UNTER DEM 'if' UND 'else' STEHEN (8 Leerzeichen)
+        st.markdown("---")
         st.subheader("Task 3: Coins investieren")
-        
         df_coins = get_cached_data("Sabotage")
+        
         if df_coins.empty:
             st.warning("Warten auf Sabotage-Berichte aus Task 2...")
         else:
@@ -394,23 +413,22 @@ else:
                 investments[item] = val
                 spent += val
             
-            c_status = "#00FF41" if spent == 100 else "#FF4B4B"
+            c_status = "#00f2ff" if spent == 100 else "#FF4B4B"
             st.markdown(f"### Budget-Status: <span style='color:{c_status}; font-weight:bold;'>{spent} / 100 Coins</span>", unsafe_allow_html=True)
             
-            if spent == 100:
-                if st.button("FINALIZE TRANSACTION", use_container_width=True):
-                    st.toast("💰 Transaktion wird validiert...", icon="⏳")
-                    vote_row = {"Voter": voter, "Total": 100}
-                    vote_row.update(investments)
-                    df_v = get_cached_data("Votes")
-                    if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
-                    
-                    conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
-                    st.cache_data.clear()
-                    st.balloons()
-                    st.success("TRANSACTION SECURED")
-                    time.sleep(1.5)
-                    st.rerun()
+            if st.button("FINALIZE TRANSACTION", use_container_width=True, disabled=(spent != 100)):
+                st.toast("💰 Transaktion wird validiert...", icon="⏳")
+                vote_row = {"Voter": voter, "Total": 100}
+                vote_row.update(investments)
+                df_v = get_cached_data("Votes")
+                if not df_v.empty: df_v = df_v[df_v.get("Voter") != voter]
+                
+                conn.update(worksheet="Votes", data=pd.concat([df_v, pd.DataFrame([vote_row])], ignore_index=True))
+                st.cache_data.clear()
+                st.balloons()
+                st.success("TRANSACTION SECURED")
+                time.sleep(1.5)
+                st.rerun()
 
     # TAB 4: DEEP DIVE
     with t4:
