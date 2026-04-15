@@ -4,6 +4,7 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import time
 import os
+import altair as alt
 
 # --- 1. PLUGINS & CONFIG ---
 st.set_page_config(page_title="PCS Intelligence HQ", page_icon="🚀", layout="wide")
@@ -375,7 +376,6 @@ else:
         else:
             ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
             ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
-       import altair as alt
 
 # Altair Chart bauen mit schwarzem Hintergrund, weißer Schrift und türkisen Balken
 chart = alt.Chart(ranking_data).mark_bar(color="#00f2ff").encode(
