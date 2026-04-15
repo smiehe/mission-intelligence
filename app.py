@@ -375,7 +375,19 @@ else:
         else:
             ranking_data = df_v_live.drop(columns=["Voter", "Total"], errors='ignore').sum().reset_index()
             ranking_data.columns = ["Sabotage-Thema", "Investierte Coins"]
-            st.bar_chart(ranking_data.set_index("Sabotage-Thema"), use_container_width=True)
+       import altair as alt
+
+# Altair Chart bauen mit schwarzem Hintergrund, weißer Schrift und türkisen Balken
+chart = alt.Chart(ranking_data).mark_bar(color="#00f2ff").encode(
+    x=alt.X('Sabotage-Thema', axis=alt.Axis(labelColor='white', titleColor='white')),
+    y=alt.Y('Investierte Coins', axis=alt.Axis(labelColor='white', titleColor='white', grid=False))
+).properties(
+    background="#050505" # Tiefschwarzer Hintergrund
+).configure_view(
+    strokeWidth=0 # Entfernt den Rahmen
+)
+
+st.altair_chart(chart, use_container_width=True)
             
         st.markdown("---")
         st.subheader("Task 3: Coins investieren")
